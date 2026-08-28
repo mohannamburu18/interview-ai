@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-dark: #0a0a0a;
+  --card-dark: #111111;
+  --accent-green: #00ff88;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: transparent;
+  color: #ededed;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Custom Scrollbar for Overlay */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(10, 10, 10, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff88;
+}
+
+/* Draggable Region */
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.glow-text {
+  text-shadow: 0 0 16px rgba(0, 255, 136, 0.4);
+}
+
+.glass-card {
+  background: rgba(17, 17, 17, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+

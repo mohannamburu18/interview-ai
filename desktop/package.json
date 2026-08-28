@@ -1,0 +1,72 @@
+{
+  "name": "parakeet-desktop",
+  "version": "1.0.0",
+  "description": "Parakeet Free Unlimited - Undetectable AI Interview Co-pilot",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder --dir",
+    "build:win": "tsc && vite build && electron-builder --win",
+    "build:mac": "tsc && vite build && electron-builder --mac",
+    "build:linux": "tsc && vite build && electron-builder --linux",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "clsx": "^2.1.1",
+    "groq-sdk": "^0.15.0",
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.6.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.19",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "build": {
+    "appId": "com.parakeet.freeunlimited",
+    "productName": "Parakeet Free Unlimited",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "resources/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  }
+}

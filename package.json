@@ -1,0 +1,30 @@
+{
+  "name": "parakeet-free-unlimited-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Parakeet Free Unlimited - #1 Interview Assistant with Undetectable Overlay and 100% Free Gemini + Groq APIs",
+  "scripts": {
+    "dev:web": "npm --prefix website run dev",
+    "dev:electron": "npm --prefix desktop run dev",
+    "electron:dev": "npm --prefix desktop run dev",
+    "build:web": "npm --prefix website run build",
+    "build:electron": "npm --prefix desktop run build",
+    "package:win": "npm --prefix desktop run build:win",
+    "package:mac": "npm --prefix desktop run build:mac",
+    "package:linux": "npm --prefix desktop run build:linux",
+    "install:all": "npm install && npm --prefix website install && npm --prefix desktop install"
+  },
+  "keywords": [
+    "parakeet",
+    "interview-copilot",
+    "ai-interview",
+    "groq",
+    "gemini",
+    "whisper",
+    "electron",
+    "nextjs"
+  ],
+  "author": "Parakeet Free Unlimited Team",
+  "license": "MIT"
+}
+
