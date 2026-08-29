@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { UserConfig, OverlayState, InterviewSessionItem, ModelMode, SpeakerType, AnswerMode, AnswerStyle } from '../types';
 import { GroqService } from '../services/groqService';
 import { GeminiService } from '../services/geminiService';
-import { PromptEngine, isHallucination, correctTerms, mergeFragments } from '../services/promptEngine';
+import { PromptEngine, isHallucination, correctTerms, mergeFragments, perfectMerge } from '../services/promptEngine';
 
 export interface RecentQuestion {
   id: string;
@@ -237,19 +237,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     const now = Date.now();
     const gap = now - lastFragmentTime;
+    const { answerMode } = get();
 
-    if (gap < 3000 && fragmentBuffer.length > 0) {
-      // Within 3.0 sec = same question continuation, append fragment
+    // Mode-aware fragment accumulation
+    if (answerMode === 'manual') {
+      // MANUAL MODE: Always append to fragment buffer without cutting off
       fragmentBuffer.push(trimmed);
     } else {
-      // New distinct question started
-      fragmentBuffer = [trimmed];
+      // AUTO MODE: If gap < 3500ms append, otherwise start new
+      if (gap < 3500 && fragmentBuffer.length > 0) {
+        fragmentBuffer.push(trimmed);
+      } else {
+        fragmentBuffer = [trimmed];
+      }
     }
 
     lastFragmentTime = now;
-    const buildingQuestion = mergeFragments(fragmentBuffer);
+    const buildingQuestion = perfectMerge(fragmentBuffer, answerMode);
 
-    console.log(`[Building Question (${fragmentBuffer.length} fragments)]:`, buildingQuestion);
+    console.log(`[Building Question (${fragmentBuffer.length} fragments, Mode: ${answerMode})]:`, buildingQuestion);
 
     set({
       liveTranscription: buildingQuestion,
@@ -258,49 +264,76 @@ export const useAppStore = create<AppStore>((set, get) => ({
       mergedFragmentsCount: fragmentBuffer.length,
     });
 
-    // Finalize question to buffer on silence, but DO NOT auto-answer (wait for Ctrl+Enter)
     if (finalizeTimer) clearTimeout(finalizeTimer);
-    finalizeTimer = setTimeout(() => {
-      if (buildingQuestion.length >= 8) {
-        const finalQuestion = mergeFragments(fragmentBuffer);
-        console.log('FINALIZED QUESTION READY (WAITING FOR CTRL+ENTER):', finalQuestion);
 
-        const { recentQuestions } = get();
+    if (answerMode === 'auto') {
+      // AUTO MODE: Wait 3.5 sec silence, then auto generate answer
+      finalizeTimer = setTimeout(() => {
+        if (buildingQuestion.length >= 8) {
+          const finalQuestion = perfectMerge(fragmentBuffer, 'auto');
+          console.log('[Auto Mode] 3.5s silence detected, answering:', finalQuestion);
 
-        const newRecent: RecentQuestion = {
-          id: 'rq_' + Date.now(),
-          text: finalQuestion,
-          speaker,
-          timestamp: Date.now(),
-        };
+          const { recentQuestions } = get();
+          const newRecent: RecentQuestion = {
+            id: 'rq_' + Date.now(),
+            text: finalQuestion,
+            speaker,
+            timestamp: Date.now(),
+          };
+          const updated = [newRecent, ...recentQuestions.filter((q) => q.text !== finalQuestion)].slice(0, 5);
 
-        const updated = [newRecent, ...recentQuestions.filter((q) => q.text !== finalQuestion)].slice(0, 3);
+          set({
+            liveTranscription: finalQuestion,
+            isBuildingTranscript: false,
+            mergedFragmentsCount: fragmentBuffer.length,
+            recentQuestions: updated,
+          });
 
-        set({
-          liveTranscription: finalQuestion,
-          isBuildingTranscript: false,
-          mergedFragmentsCount: fragmentBuffer.length,
-          recentQuestions: updated,
-        });
-      }
-      finalizeTimer = null;
-    }, 1000);
+          get().generateAIAnswer(finalQuestion, speaker);
+          fragmentBuffer = [];
+        }
+        finalizeTimer = null;
+      }, 3500);
+    } else {
+      // MANUAL MODE: Never auto-answer. Keep listening everything until Ctrl+Enter.
+      finalizeTimer = setTimeout(() => {
+        if (buildingQuestion.length >= 8) {
+          set({
+            isBuildingTranscript: false,
+          });
+        }
+        finalizeTimer = null;
+      }, 1500);
+    }
   },
 
   triggerManualAnswer: async (questionOverride?: string) => {
+    if (finalizeTimer) clearTimeout(finalizeTimer);
     const { liveTranscription, activeSpeaker } = get();
-    const targetQuestion = (questionOverride || liveTranscription).trim();
+    const questionToAnswer = questionOverride || liveTranscription;
 
-    if (!targetQuestion || targetQuestion.length < 4) {
-      console.warn('[Manual Answer] Question buffer too short or empty.');
+    if (!questionToAnswer || questionToAnswer.trim().length < 5) {
+      console.warn('[AppStore] No valid question to answer.');
       return;
     }
 
-    console.log(`[Manual Answer Triggered] [${activeSpeaker || 'interviewer'}]: "${targetQuestion}"`);
-    await get().generateAIAnswer(targetQuestion, activeSpeaker || 'interviewer');
+    // Add to recent questions
+    const { recentQuestions } = get();
+    const newRecent: RecentQuestion = {
+      id: 'rq_' + Date.now(),
+      text: questionToAnswer,
+      speaker: activeSpeaker || 'interviewer',
+      timestamp: Date.now(),
+    };
+    const updated = [newRecent, ...recentQuestions.filter((q) => q.text !== questionToAnswer)].slice(0, 5);
 
-    // Clear fragment buffer for the next question
-    fragmentBuffer = [];
+    set({
+      recentQuestions: updated,
+      isBuildingTranscript: false,
+    });
+
+    fragmentBuffer = []; // Reset accumulator for next question
+    await get().generateAIAnswer(questionToAnswer, activeSpeaker || 'interviewer');
   },
 
   generateAIAnswer: async (text: string, speaker: SpeakerType = 'interviewer') => {

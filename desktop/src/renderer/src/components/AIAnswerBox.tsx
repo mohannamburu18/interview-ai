@@ -58,13 +58,36 @@ export const AIAnswerBox: React.FC = () => {
       <div className="space-y-2.5 text-xs font-sans">
         {sections.map((sec, secIdx) => {
           if (sec.type === 'code') {
+            const currentLang = (sec.language || 'python').toLowerCase();
             return (
               <div key={secIdx} className="rounded-lg bg-[#141414] border border-[#00ff88]/20 overflow-hidden font-mono shadow-md my-2">
                 <div className="bg-[#1a1a1a] px-3 py-1.5 border-b border-white/5 flex items-center justify-between text-[10px] text-neutral-400">
-                  <div className="flex items-center gap-1.5 text-[#00ff88] font-bold uppercase tracking-wider">
-                    <Code2 className="w-3.5 h-3.5" />
-                    <span>{sec.language || 'CODE'}</span>
+                  {/* Language Switcher Tabs */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-[#00ff88] font-bold uppercase tracking-wider mr-1">
+                      <Code2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded border border-white/5">
+                      {['python', 'java', 'sql'].map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => {
+                            const { liveTranscription, generateAIAnswer, activeSpeaker } = useAppStore.getState();
+                            const prompt = `Convert the code in this question to ${lang.toUpperCase()}: "${liveTranscription}"`;
+                            generateAIAnswer(prompt, activeSpeaker || 'interviewer');
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-all ${
+                            currentLang.includes(lang)
+                              ? 'bg-[#00ff88] text-black shadow-glow-green-sm'
+                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                          }`}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
                   <button
                     onClick={() => handleCopyCode(sec.content, secIdx)}
                     className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-[#00ff88] flex items-center gap-1 transition-colors"

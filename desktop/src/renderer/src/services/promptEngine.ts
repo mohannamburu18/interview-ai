@@ -49,7 +49,7 @@ export function isHallucination(text: string): boolean {
   const t = text.toLowerCase().trim();
 
   // Layer 1: Too short or too few words (unless direct question)
-  if (t.length < 12 && !t.includes('?')) return true;
+  if (t.length < 10 && !t.includes('?')) return true;
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 3 && !t.includes('?')) return true;
 
@@ -85,45 +85,105 @@ export function isCandidateVoice(text: string): boolean {
 }
 
 /**
- * Phonetic & Technical Term Correction
+ * Technical Vocabulary & Mishear Correction (Fixes TrustSec, CRUD, SQL, etc.)
  */
-export function correctTerms(text: string): string {
+export function correctTechTerms(text: string): string {
   if (!text) return '';
-  let cleaned = text;
+  let t = text;
 
-  const corrections: Array<[RegExp, string]> = [
-    [/\b(water cloud operations|water cloud|crude operations|crude operation|crew operations|cloud operations in sql)\b/gi, 'CRUD operations in SQL'],
-    [/\b(crude|crew)\b/gi, 'CRUD'],
-    [/\b(are you a familiar)\b/gi, 'are you familiar'],
-    [/\b(doc er|dock are|dockers commands)\b/gi, 'Docker commands'],
-    [/\b(kuberneties|kubernets|k eight s)\b/gi, 'Kubernetes'],
-    [/\b(post grass|postgress|postgre sql)\b/gi, 'PostgreSQL'],
-    [/\b(no sequel|no sq l)\b/gi, 'NoSQL'],
-    [/\b(my sequel|my sq l)\b/gi, 'MySQL'],
-    [/\b(sequel|sq l)\b/gi, 'SQL'],
-    [/\b(kaf ca|caffa)\b/gi, 'Kafka'],
-    [/\b(micro services)\b/gi, 'microservices'],
-    [/\b(rest full|rest api s)\b/gi, 'REST API'],
-    [/\b(type script)\b/gi, 'TypeScript'],
-    [/\b(java script)\b/gi, 'JavaScript'],
-    [/\b(dynamo db)\b/gi, 'DynamoDB'],
-    [/\b(mongo db)\b/gi, 'MongoDB'],
-    [/\b(double linked list)\b/gi, 'doubly linked list'],
-  ];
+  // Cisco TrustSec mishears
+  t = t.replace(/trust\s*sick\s*s-?i-?c-?k/gi, 'TrustSec');
+  t = t.replace(/trust\s*sick/gi, 'TrustSec');
+  t = t.replace(/trust\s*six/gi, 'TrustSec');
+  t = t.replace(/trustsec/gi, 'TrustSec');
+  t = t.replace(/\bS-I-C-K\b/gi, 'TrustSec');
 
-  for (const [regex, replacement] of corrections) {
-    cleaned = cleaned.replace(regex, replacement);
+  const dict: Record<string, string> = {
+    'water cloud operations': 'CRUD operations in SQL',
+    'water cloud': 'CRUD',
+    'crude operations': 'CRUD operations',
+    'crew operations': 'CRUD operations',
+    'sequel': 'SQL',
+    'my sequel': 'MySQL',
+    'post grace': 'PostgreSQL',
+    'post gres': 'PostgreSQL',
+    'mongo DB': 'MongoDB',
+    'node JS': 'Node.js',
+    'react JS': 'React.js',
+    'spring boot': 'Spring Boot',
+    'java script': 'JavaScript',
+    'type script': 'TypeScript',
+    'double linked list': 'doubly linked list',
+    'prime number': 'prime number',
+    'what is trust sec': 'what is Cisco TrustSec',
+    'what is trustsec': 'what is Cisco TrustSec',
+    'doc er': 'Docker',
+    'dock are': 'Docker',
+    'kuberneties': 'Kubernetes',
+    'kubernets': 'Kubernetes',
+    'micro services': 'microservices',
+    'rest full': 'RESTful',
+  };
+
+  for (const [wrong, correct] of Object.entries(dict)) {
+    t = t.replace(new RegExp(`\\b${wrong}\\b`, 'gi'), correct);
   }
 
-  return cleaned.trim();
+  return t.trim();
+}
+
+export const correctTerms = correctTechTerms;
+
+/**
+ * Strong Code Question Detection
+ */
+export function isCodeQuestion(question: string): boolean {
+  const q = question.toLowerCase();
+  const codeKeywords = [
+    'write a code',
+    'write code',
+    'write down',
+    'python code',
+    'java code',
+    'code for',
+    'program for',
+    'program to',
+    'implement a',
+    'implement',
+    'create a function',
+    'function for',
+    'finding a number is prime',
+    'prime or not',
+    'prime number',
+    'is prime',
+    'add two strings',
+    'adding two strings',
+    'reverse a string',
+    'code to',
+    'leetcode',
+    'algorithm for',
+  ];
+  return codeKeywords.some((k) => q.includes(k));
 }
 
 /**
- * Perfect Merge: Deduplicates identical/overlapping fragments and strips repetition loops
+ * Auto-detect programming language from prompt
  */
-export function perfectMerge(fragments: string[]): string {
+export function detectCodeLanguage(question: string): 'python' | 'java' | 'javascript' | 'sql' {
+  const q = question.toLowerCase();
+  if (q.includes('python')) return 'python';
+  if (q.includes('java') && !q.includes('javascript')) return 'java';
+  if (q.includes('javascript') || q.includes('typescript') || q.includes('js') || q.includes('ts')) return 'javascript';
+  if (q.includes('sql') || q.includes('query')) return 'sql';
+  return 'python'; // Default to python for algorithmic questions
+}
+
+/**
+ * Smart Merge: Handles Manual Mode continuous accumulation vs Auto Mode overlap merging
+ */
+export function perfectMerge(fragments: string[], mode: 'manual' | 'auto' = 'manual'): string {
   if (!fragments || fragments.length === 0) return '';
-  const valid = fragments.filter(Boolean).map((f) => correctTerms(f.trim()));
+  const valid = fragments.filter(Boolean).map((f) => correctTechTerms(f.trim()));
   if (valid.length === 0) return '';
 
   if (valid.length === 1) {
@@ -138,11 +198,36 @@ export function perfectMerge(fragments: string[]): string {
     return single;
   }
 
-  // Step 1: Normalize
-  const normalized = valid.map((f) => f.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim());
+  // MANUAL MODE: Continuous accumulation without cutting off speech
+  if (mode === 'manual') {
+    const unique: string[] = [];
+    for (const frag of valid) {
+      const lower = frag.toLowerCase().trim();
+      if (!unique.some((u) => u.toLowerCase().trim() === lower)) {
+        unique.push(frag);
+      }
+    }
 
-  // Step 2: Keep unique fragments with >30% new words (75% similarity = duplicate)
+    let merged = unique.join(' ');
+    merged = merged.replace(/\b(in SQL)(?:\s+\1\b)+/gi, 'in SQL');
+    merged = merged.replace(/\b(what are CRUD operations in SQL)(?:.*\1)+/gi, '$1');
+    merged = merged.replace(/\b(write down a python code for adding two strings)(?:.*\1)+/gi, '$1');
+    merged = merged.replace(/\b(\w+ \w+ \w+)(?:\s+\1)+\b/gi, '$1');
+    merged = merged.replace(/\b(\w+ \w+)(?:\s+\1)+\b/gi, '$1');
+    merged = merged.replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1');
+    merged = merged.replace(/\s{2,}/g, ' ').trim();
+
+    merged = merged.charAt(0).toUpperCase() + merged.slice(1);
+    if (!merged.endsWith('?') && /^(what|how|tell|explain|why|can you|are you|write|implement|describe)/i.test(merged)) {
+      merged += '?';
+    }
+    return merged;
+  }
+
+  // AUTO MODE: Overlap detection
+  const normalized = valid.map((f) => f.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim());
   const uniqueOriginals: string[] = [];
+
   for (let i = 0; i < valid.length; i++) {
     const currentNorm = normalized[i];
     const isDuplicate = uniqueOriginals.some((orig) => {
@@ -157,7 +242,6 @@ export function perfectMerge(fragments: string[]): string {
     if (!isDuplicate) {
       uniqueOriginals.push(valid[i]);
     } else {
-      // Replace with longer version if current is longer
       const dupIdx = uniqueOriginals.findIndex((orig) => {
         const origNorm = orig.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
         const currentWords = currentNorm.split(' ');
@@ -172,7 +256,6 @@ export function perfectMerge(fragments: string[]): string {
     }
   }
 
-  // Step 3: Join and clean duplicates
   let merged = uniqueOriginals.join(' ');
   merged = merged.replace(/\b(in SQL)(?:\s+\1\b)+/gi, 'in SQL');
   merged = merged.replace(/\b(what are CRUD operations in SQL)(?:.*\1)+/gi, '$1');
@@ -182,7 +265,6 @@ export function perfectMerge(fragments: string[]): string {
   merged = merged.replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1');
   merged = merged.replace(/\s{2,}/g, ' ').trim();
 
-  // Capitalize first letter & ensure trailing ?
   const parts = merged.split('?');
   merged = parts[0].trim();
   merged = merged.charAt(0).toUpperCase() + merged.slice(1);
@@ -197,10 +279,10 @@ export const mergeFragments = perfectMerge;
 
 export class PromptEngine {
   /**
-   * Constructs Parakeet AI + Cluely AI Master System Prompt
+   * Constructs Parakeet AI Master System Prompt
    */
   public static buildSystemPrompt(context: PromptContext): string {
-    const { resumeText, jobDescription, companyName, candidateName, isCodeMode, language, answerStyle } = context;
+    const { resumeText, jobDescription, companyName, candidateName } = context;
 
     return `You are Parakeet AI — the #1 real-time interview co-pilot. You format answers in Parakeet's EXACT scannable, visual style.
 
@@ -208,9 +290,15 @@ FORMATTING RULES:
 - Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts.
 - Keep headings: **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
 - SAY THIS MUST BE 90-130 WORDS: 4-5 sentences, detailed, ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context (Java 17, Spring Boot, AWS, Nyeras Edutech MTTD), and closing rationale.
-- CODE DETECTION: If question contains 'write code', 'python code', 'java code', 'code for', 'program', 'implement' -> MUST include **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block + **EXPLANATION:** + long SAY THIS explaining code line-by-line (90+ words).
-- THEORY: If 'what are', 'explain', 'tell me about' -> Give theory with KEY OPERATIONS / SQL MAPPING and long SAY THIS.
-- Correct 'water cloud' to 'CRUD' silently.
+- CODE AUTO-DETECTION:
+  If the question asks to write code, implement, or program:
+  1. You MUST output CODE MODE.
+  2. MUST include **CODE SNIPPET:** with the EXACT detected language block (\`\`\`python or \`\`\`java).
+  3. Include **EXPLANATION:** bullets.
+  4. Include **SAY THIS:** (90+ words) walking through the code logic line by line.
+  5. Never output Java when Python was requested, or vice versa.
+- THEORY: If asking 'what is', 'explain', 'tell me about' -> Give theory with KEY OPERATIONS / SQL MAPPING and long SAY THIS.
+- Correct 'water cloud' to 'CRUD' and 'trust sick' to 'TrustSec' silently.
 
 CANDIDATE CONTEXT:
 - Candidate Name: ${candidateName || 'Candidate'}
@@ -222,51 +310,53 @@ ${resumeText || "Java and Spring Boot engineer with 3+ years experience building
 
 TEMPLATES:
 
-1. FOR CODE QUESTIONS (e.g. "write down a python code for adding two strings"):
+1. FOR CODE QUESTIONS (e.g. "write a python code for finding a number is prime or not"):
 
-**PYTHON STRING ADDITION - CODE & LOGIC**
+**PYTHON PRIME CHECK - CODE & LOGIC**
 
 **CORE SYNTAX:**
-• Concatenation using + operator
-• join() method for sequence concatenation
+• Check divisibility up to sqrt(n)
+• O(sqrt(n)) time complexity
 
 **CODE SNIPPET:**
 \`\`\`python
-# Method 1: Using + operator
-str1 = "Hello"
-str2 = "World"
-result = str1 + str2
-print(result)  # Output: HelloWorld
+def is_prime(n):
+    if n <= 1:
+        return False
+    # Check divisors up to square root of n
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
 
-# Method 2: Using join() - efficient for multiple strings
-result2 = "".join([str1, str2])
-print(result2)
+# Example execution
+num = 17
+print(f"{num} is prime: {is_prime(num)}")  # Output: True
 \`\`\`
 
 **EXPLANATION:**
-• + operator creates a new string object (immutable)
-• join() is O(n) linear and avoids quadratic copy overhead
+• Numbers less than or equal to 1 are not prime
+• Checking up to sqrt(n) optimizes from O(n) to O(sqrt(n))
 
 **SAY THIS:**
-> "In Python, to concatenate or add two strings, we can use the plus operator. For example, setting str1 to 'Hello' and str2 to 'World', then result equals str1 plus str2 produces 'HelloWorld'. Because strings in Python are immutable, each plus operation creates a new string object in memory. When combining multiple strings or working in loops, I prefer using empty string dot join with a list, which runs in linear O of N time and avoids unnecessary memory reallocation."
+> "To check if a number is prime in Python, I define a function is_prime that first checks if n is less than or equal to 1, returning False. Then, instead of checking all numbers up to n, I optimize the loop to check divisibility from 2 up to the integer square root of n plus 1. If any number divides evenly, I return False, otherwise True. This reduces the time complexity from linear O of N down to O of square root of N, which is optimal for high-throughput validation in production."
 
-2. FOR THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "Doubly linked list"):
+2. FOR CISCO TRUSTSEC / NETWORKING / SECURITY:
 
-**[TOPIC] - DIRECT DEFINITION**
+**CISCO TRUSTSEC - DIRECT DEFINITION**
 
-**What:** [1 line crisp definition]
+**What:** Next-generation security architecture that enforces role-based access control (RBAC) using Security Group Tags (SGTs) instead of complex IP-based ACLs.
 
-**SQL MAPPING / KEY OPERATIONS:**
-• **C**reate → INSERT INTO users VALUES(...)
-• **R**ead → SELECT * FROM users WHERE id = ...
-• **U**pdate → UPDATE users SET status = 'active' WHERE id = ...
-• **D**elete → DELETE FROM users WHERE id = ...
+**KEY OPERATIONS:**
+• **Classification:** Ingress switches assign SGT tags to endpoints based on identity (802.1X / ISE)
+• **Propagation:** Tags are transported across switches via SXP (SGT Exchange Protocol) or Ethernet headers
+• **Enforcement:** Egress switches apply SGACLs (Security Group ACLs) to permit/deny traffic
 
 **REAL WORLD:**
-• [Where used in industry, e.g. Relational DB transactions, browser history, cache synchronization]
+• Micro-segmentation in enterprise networks, zero-trust campus security, decoupling policy from IP addressing.
 
 **SAY THIS:**
-> "[90-130 words comprehensive spoken explanation: 2-3 lines definition, 1 line SQL keywords example, 1 line production experience at Nyeras Edutech with Spring Boot/Java/AWS/indexing, and 1 line closing why it forms the backbone of applications]"
+> "Cisco TrustSec is a policy-based security framework that provides identity-based segmentation across enterprise networks. Instead of maintaining cumbersome IP-based access control lists, TrustSec classifies users and endpoints at the access layer and assigns them a Security Group Tag, or SGT, through Cisco ISE. As traffic moves across the network, egress network devices enforce granular Security Group ACLs based on source and destination tags. This decouples security policy from network topology, enabling scalable micro-segmentation and robust Zero Trust enforcement."
 
 3. FOR "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
 
@@ -288,38 +378,30 @@ print(result2)
 **SAY THIS:**
 > "I'm a Java and Spring Boot engineer specializing in building scalable, secure RESTful platforms. At Nyeras Edutech, I cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics across our microservices. My core stack centers on Java 17, Spring Boot, AWS, and React. I'm excited about this opportunity at ${companyName || 'Barclays'} to drive digital innovation, deliver resilient software, and contribute to your customer experience goals."
 
-4. FOR BEHAVIORAL:
-
-**[TOPIC] - STAR**
-
-**Situation:** [1 line context]
-**Task:** [1 line objective]
-**Action:**
-• [Action 1]
-• [Action 2]
-**Result:** [Outcome with metric]
-
-**SAY THIS:**
-> "[90-110 words full STAR narrative in confident first person]"
-
 RULES:
 - Temperature: 0.25
-- Never output "<think>" tags
-- Always correct "water cloud" to "CRUD" silently`;
+- Never output "<think>" tags`;
   }
 
   /**
    * Builds user prompt based on detected or selected style
    */
   public static buildUserPrompt(question: string, style: AnswerStyle = 'auto'): string {
-    const cleanQuestion = correctTerms(question.trim());
+    const cleanQuestion = correctTechTerms(question.trim());
 
     // 1. Check Code Question
-    const isCode = /write (a )?(function|code|algorithm|program|script|down)|python code|java code|code for|program for|implement|create a function|coding question|adding two strings|two strings/i.test(cleanQuestion);
-    if (isCode || style === 'code') {
-      console.log('CODE DETECTED IN PROMPT BUILDER:', cleanQuestion);
+    if (isCodeQuestion(cleanQuestion) || style === 'code') {
+      const detectedLang = detectCodeLanguage(cleanQuestion);
+      console.log(`[PromptBuilder] CODE DETECTED (${detectedLang}):`, cleanQuestion);
       return `Question: "${cleanQuestion}".
-YOU MUST OUTPUT IN CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block, **EXPLANATION:**, and **SAY THIS:** (90+ words explaining code line by line). DO NOT output text only.`;
+YOU MUST OUTPUT IN CODE MODE FOR LANGUAGE: ${detectedLang.toUpperCase()}.
+Include:
+1) **${detectedLang.toUpperCase()} [TOPIC] - CODE & LOGIC**
+2) **CORE SYNTAX:**
+3) **CODE SNIPPET:** with \`\`\`${detectedLang} containing clean, runnable code.
+4) **EXPLANATION:**
+5) **SAY THIS:** (90+ words walking through the code in spoken words).
+DO NOT output a different programming language. DO NOT output text only.`;
     }
 
     // 2. Check Introduction
