@@ -168,6 +168,12 @@ export function correctTechTerms(text: string): string {
   t = t.replace(/\bS-I-C-K\b/gi, 'TrustSec');
   t = t.replace(/cisco\s*trust\s*sec/gi, 'Cisco TrustSec');
 
+  // OOPS / Object-Oriented Programming mishears
+  t = t.replace(/\bfour pillars of the\b/gi, 'four pillars of OOPS');
+  t = t.replace(/\bfour pillars of\b/gi, 'four pillars of OOPS');
+  t = t.replace(/\b(whoops|upps|opps|oops concepts)\b/gi, 'OOPS');
+  t = t.replace(/\bobject oriented programming\b/gi, 'Object-Oriented Programming (OOPS)');
+
   const dict: Record<string, string> = {
     'water cloud operations': 'CRUD operations in SQL',
     'water cloud': 'CRUD',
@@ -193,6 +199,8 @@ export function correctTechTerms(text: string): string {
     'kubernets': 'Kubernetes',
     'micro services': 'microservices',
     'rest full': 'RESTful',
+    'oops': 'OOPS',
+    'oop': 'OOPS',
   };
 
   for (const [wrong, correct] of Object.entries(dict)) {
@@ -408,7 +416,23 @@ TEMPLATES:
 **SAY THIS:**
 > "So basically, CRUD stands for Create, Read, Update, and Delete, which are the four core operations we do with any database. For example, when a user signs up, we create a record with INSERT, and when they log in or view their profile, we read it with SELECT. In my project at Nyeras Edutech, I used Spring Boot with JPA repositories to handle these CRUD operations for our incident detection service, making sure queries had proper indexing to prevent slow lookups. This helps us manage application data reliably and safely without manual database overhead."
 
-2. FOR CISCO TRUSTSEC / NETWORKING / SECURITY:
+2. FOR OOPS / OBJECT ORIENTED PROGRAMMING / 4 PILLARS:
+
+**OOPS - 4 CORE PILLARS**
+
+**KEY CONCEPTS:**
+• **Encapsulation:** Wrapping data (fields) & code (methods) into a single unit with private access modifiers & public getters/setters.
+• **Abstraction:** Hiding internal implementation complexities & exposing only essential interfaces/abstract classes.
+• **Inheritance:** Enabling a class to acquire properties & methods from a parent class for code reuse (extends).
+• **Polymorphism:** Allowing an object or method to execute in multiple forms (method overloading & method overriding).
+
+**REAL WORLD:**
+• Core OOP architecture in Java, Spring Boot Dependency Injection, modular microservice design.
+
+**SAY THIS:**
+> "So basically, the four core pillars of Object-Oriented Programming are Encapsulation, Abstraction, Inheritance, and Polymorphism. For example, Encapsulation lets us protect internal data using private fields, while Abstraction allows us to define clean interfaces without exposing messy underlying logic. In my project at Nyeras Edutech, I used Inheritance and Polymorphism with Spring Boot to create reusable base service classes and dynamic event processors across our microservices. This helps us write clean, modular, and maintainable software that can scale smoothly."
+
+3. FOR CISCO TRUSTSEC / NETWORKING / SECURITY:
 
 **CISCO TRUSTSEC - DIRECT DEFINITION**
 

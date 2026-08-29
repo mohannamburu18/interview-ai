@@ -332,8 +332,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       isBuildingTranscript: false,
     });
 
-    fragmentBuffer = []; // Reset accumulator for next question
+    fragmentBuffer = []; // Reset accumulator immediately
     await get().generateAIAnswer(questionToAnswer, activeSpeaker || 'interviewer');
+
+    // Auto-clear Finalized Question after 500ms so new question starts clean
+    setTimeout(() => {
+      fragmentBuffer = [];
+      set({
+        liveTranscription: '',
+        mergedFragmentsCount: 0,
+        isBuildingTranscript: false,
+      });
+    }, 500);
   },
 
   generateAIAnswer: async (text: string, speaker: SpeakerType = 'interviewer') => {
