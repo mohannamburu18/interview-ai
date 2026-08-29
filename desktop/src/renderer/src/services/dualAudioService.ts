@@ -1,6 +1,6 @@
 import { SpeakerType } from '../types';
 import { GroqService } from './groqService';
-import { isHallucination, correctTerms } from './promptEngine';
+import { isHallucination, correctTerms, isCandidateVoice } from './promptEngine';
 
 export interface AudioCaptureCallbacks {
   onTranscript: (text: string, speaker: SpeakerType, isFinal: boolean) => void;
@@ -176,7 +176,7 @@ export class DualAudioCaptureEngine {
 
             console.log('BLOB SIZE:', blob.size);
 
-            if (blob.size >= 4500 && this.groqApiKey) {
+            if (blob.size >= 5000 && this.groqApiKey) {
               try {
                 const text = await GroqService.transcribeAudio(
                   blob,
@@ -186,6 +186,12 @@ export class DualAudioCaptureEngine {
                 );
 
                 if (text && !isHallucination(text)) {
+                  // Gate 3: Filter candidate self-filler acknowledgments
+                  if (this.currentSpeaker === 'user' && isCandidateVoice(text)) {
+                    console.log('[AudioEngine] Discarded candidate filler voice:', text);
+                    return;
+                  }
+
                   const cleaned = correctTerms(text.trim());
                   this.recentTranscriptContext = cleaned;
                   const speaker = this.systemStream ? this.currentSpeaker : this.classifySpeaker(cleaned);

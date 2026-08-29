@@ -10,54 +10,77 @@ export interface PromptContext {
   answerStyle?: AnswerStyle;
 }
 
+const BLACKLIST_EXACT = [
+  'thank you',
+  'thanks for watching',
+  'thank you for watching',
+  'yeah',
+  'uh',
+  'um',
+  'music',
+  '[music]',
+  'subscribe',
+  'like and subscribe',
+  '.',
+  'a',
+  'the',
+  'you',
+  'water cloud operations',
+  'some hallucinations',
+  'asking for water',
+];
+
+const BLACKLIST_CONTAINS = [
+  'hallucination',
+  'water cloud',
+  'asking for water',
+  'thank you',
+  'subscribe',
+  'like and subscribe',
+  'ultra prompt',
+  'prompt logic',
+];
+
 /**
- * Ultra-Aggressive Zero Hallucination Filter
+ * 5-Layer Ultra-Aggressive Zero Hallucination Filter
  */
 export function isHallucination(text: string): boolean {
   if (!text) return true;
   const t = text.toLowerCase().trim();
 
-  // Basic length check: must have at least 8 characters
-  if (t.length < 8) return true;
-
-  // Must have at least 3 words unless it's a direct short question
+  // Layer 1: Too short or too few words (unless direct question)
+  if (t.length < 12 && !t.includes('?')) return true;
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 3 && !t.includes('?')) return true;
 
-  // Standalone filler blacklist
-  const blacklist = [
-    'thank you',
-    'thanks for watching',
-    'thanks',
-    'yeah',
-    'yes',
-    'uh',
-    'um',
-    'water cloud',
-    'some hallucinations',
-    'music',
-    'subscribe',
-    'like and subscribe',
-    'hallucinations',
-    'ultra prompt',
-    'prompt logic',
-    'bye',
-    'okay',
-    'ok',
-    'you know',
-  ];
+  // Layer 2: Exact blacklist match
+  if (BLACKLIST_EXACT.includes(t)) return true;
 
-  if (blacklist.some((b) => t === b || t.startsWith(b + ' ') || t.endsWith(' ' + b))) {
+  // Layer 3: Contains blacklist phrases
+  if (BLACKLIST_CONTAINS.some((p) => t.includes(p))) return true;
+
+  // Layer 4: Filler only
+  if (/^(yeah|yes|no|okay|ok|thanks|thank you|uh|um|ah|oh|hmm)[\s\.\,]*$/i.test(t)) return true;
+
+  // Layer 5: Repetition hallucination (Whisper repeating same word)
+  const uniqueWords = new Set(words);
+  if (uniqueWords.size === 1 && words.length > 2) return true; // e.g. "hello hello hello"
+  if (uniqueWords.size <= 2 && words.length > 4) return true;
+
+  // Layer 6: Punctuation/noise only
+  if (/^[\.\,\s\-\_\?\!]+$/.test(t)) return true;
+
+  return false;
+}
+
+/**
+ * Filters candidate self-acknowledgments from becoming questions
+ */
+export function isCandidateVoice(text: string): boolean {
+  const t = text.toLowerCase().trim();
+  if (t.length < 15 && /^(yeah|yes|okay|ok|right|got it|i see|sure|cool|hello|hi|bye)/i.test(t)) {
     return true;
   }
-
-  // Lowercase short without ? is almost always Whisper background hallucination
-  if (t === t.toLowerCase() && t.length < 15 && !t.includes('?')) {
-    return true;
-  }
-
-  if (/^(\.|\,|\?|\!|\-)+$/.test(t)) return true;
-
   return false;
 }
 
@@ -85,19 +108,20 @@ export function correctTerms(text: string): string {
     [/\b(java script)\b/gi, 'JavaScript'],
     [/\b(dynamo db)\b/gi, 'DynamoDB'],
     [/\b(mongo db)\b/gi, 'MongoDB'],
+    [/\b(double linked list)\b/gi, 'doubly linked list'],
   ];
 
   for (const [regex, replacement] of corrections) {
     cleaned = cleaned.replace(regex, replacement);
   }
 
-  return cleaned;
+  return cleaned.trim();
 }
 
 /**
- * Smart Merge: Deduplicates 2-3 fragments, removes repetitions, and keeps the cleanest complete question
+ * Perfect Merge: Deduplicates identical/overlapping fragments and strips repetition loops
  */
-export function smartMerge(fragments: string[]): string {
+export function perfectMerge(fragments: string[]): string {
   if (!fragments || fragments.length === 0) return '';
   const valid = fragments.filter(Boolean).map((f) => correctTerms(f.trim()));
   if (valid.length === 0) return '';
@@ -114,29 +138,45 @@ export function smartMerge(fragments: string[]): string {
     return single;
   }
 
-  // Similarity calculator
-  const similarity = (a: string, b: string) => {
-    const wordsA = new Set(a.toLowerCase().split(/\s+/));
-    const wordsB = new Set(b.toLowerCase().split(/\s+/));
-    const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
-    return intersection / Math.max(wordsA.size, wordsB.size);
-  };
+  // Step 1: Normalize
+  const normalized = valid.map((f) => f.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim());
 
-  // Deduplicate similar fragments (>65% similarity keeps longest)
-  const unique: string[] = [];
-  for (const frag of valid) {
-    const matchIdx = unique.findIndex((u) => similarity(u, frag) > 0.65);
-    if (matchIdx === -1) {
-      unique.push(frag);
-    } else if (frag.length > unique[matchIdx].length) {
-      unique[matchIdx] = frag;
+  // Step 2: Keep unique fragments with >30% new words (75% similarity = duplicate)
+  const uniqueOriginals: string[] = [];
+  for (let i = 0; i < valid.length; i++) {
+    const currentNorm = normalized[i];
+    const isDuplicate = uniqueOriginals.some((orig) => {
+      const origNorm = orig.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      const currentWords = currentNorm.split(' ');
+      const origWords = new Set(origNorm.split(' '));
+      const commonCount = currentWords.filter((w) => origWords.has(w)).length;
+      const similarity = commonCount / Math.max(currentWords.length, origWords.size);
+      return similarity > 0.70;
+    });
+
+    if (!isDuplicate) {
+      uniqueOriginals.push(valid[i]);
+    } else {
+      // Replace with longer version if current is longer
+      const dupIdx = uniqueOriginals.findIndex((orig) => {
+        const origNorm = orig.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        const currentWords = currentNorm.split(' ');
+        const origWords = new Set(origNorm.split(' '));
+        const commonCount = currentWords.filter((w) => origWords.has(w)).length;
+        const similarity = commonCount / Math.max(currentWords.length, origWords.size);
+        return similarity > 0.70;
+      });
+      if (dupIdx !== -1 && valid[i].length > uniqueOriginals[dupIdx].length) {
+        uniqueOriginals[dupIdx] = valid[i];
+      }
     }
   }
 
-  let merged = unique.join(' ');
-  // Clean repeating phrases like "in SQL in SQL" or duplicate blocks
+  // Step 3: Join and clean duplicates
+  let merged = uniqueOriginals.join(' ');
   merged = merged.replace(/\b(in SQL)(?:\s+\1\b)+/gi, 'in SQL');
   merged = merged.replace(/\b(what are CRUD operations in SQL)(?:.*\1)+/gi, '$1');
+  merged = merged.replace(/\b(write down a python code for adding two strings)(?:.*\1)+/gi, '$1');
   merged = merged.replace(/\b(\w+ \w+ \w+)(?:\s+\1)+\b/gi, '$1');
   merged = merged.replace(/\b(\w+ \w+)(?:\s+\1)+\b/gi, '$1');
   merged = merged.replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1');
@@ -153,39 +193,29 @@ export function smartMerge(fragments: string[]): string {
   return merged;
 }
 
-export const mergeFragments = smartMerge;
+export const mergeFragments = perfectMerge;
 
 export class PromptEngine {
   /**
-   * Constructs Parakeet AI + Cluely AI Structured Formatting System Prompt
+   * Constructs Parakeet AI + Cluely AI Master System Prompt
    */
   public static buildSystemPrompt(context: PromptContext): string {
     const { resumeText, jobDescription, companyName, candidateName, isCodeMode, language, answerStyle } = context;
 
-    return `You are Parakeet AI + Cluely AI — you give answers in their EXACT visual, high-impact scannable style.
+    return `You are Parakeet AI — the #1 real-time interview co-pilot. You format answers in Parakeet's EXACT scannable, visual style.
 
 FORMATTING RULES:
-- Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts. Never output a plain wall of paragraph text.
-- Headings: Always keep headings like **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
-- REMOVE PROD TRADE-OFF completely. Only use **REAL WORLD:** when applicable for industry usage.
-- SAY THIS MUST BE 90-130 WORDS: Detailed, comprehensive, and ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context with your stack (Java 17, Spring Boot, AWS, SQL), and why it is important.
+- Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts.
+- Keep headings: **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
+- SAY THIS MUST BE 90-130 WORDS: 4-5 sentences, detailed, ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context (Java 17, Spring Boot, AWS, Nyeras Edutech MTTD), and closing rationale.
+- CODE DETECTION: If question contains 'write code', 'python code', 'java code', 'code for', 'program', 'implement' -> MUST include **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block + **EXPLANATION:** + long SAY THIS explaining code line-by-line (90+ words).
+- THEORY: If 'what are', 'explain', 'tell me about' -> Give theory with KEY OPERATIONS / SQL MAPPING and long SAY THIS.
+- Correct 'water cloud' to 'CRUD' silently.
 
-CRITICAL CODE vs THEORY AUTO-DETECTION:
-
-If the question asks for code (e.g. "write code", "write down", "python code", "java code", "code for", "program", "implement a", "create a function", "adding two strings"):
--> YOU ARE IN CODE MODE.
--> MUST include:
-   1) **[TOPIC] - CODE & LOGIC**
-   2) **CORE SYNTAX:**
-   3) **CODE SNIPPET:** with \`\`\`python or \`\`\`java block with complete runnable code (Method 1 + Method 2)
-   4) **EXPLANATION:** bullets
-   5) **SAY THIS:** (80-110 words) explaining the code line by line in spoken words.
--> NEVER output theory or plain text when code is asked!
-
-CANDIDATE PROFILE:
+CANDIDATE CONTEXT:
 - Candidate Name: ${candidateName || 'Candidate'}
 - Target Role: ${jobDescription || 'Java & Spring Boot Engineer'} at ${companyName || 'Barclays'}
-- Candidate Background:
+- Real Background:
 """
 ${resumeText || "Java and Spring Boot engineer with 3+ years experience building scalable, secure RESTful platforms. At Nyeras Edutech, cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics. Stack: Java 17, Spring Boot, AWS, React, SQL."}
 """
@@ -220,7 +250,7 @@ print(result2)
 **SAY THIS:**
 > "In Python, to concatenate or add two strings, we can use the plus operator. For example, setting str1 to 'Hello' and str2 to 'World', then result equals str1 plus str2 produces 'HelloWorld'. Because strings in Python are immutable, each plus operation creates a new string object in memory. When combining multiple strings or working in loops, I prefer using empty string dot join with a list, which runs in linear O of N time and avoids unnecessary memory reallocation."
 
-2. FOR THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "Double linked list"):
+2. FOR THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "Doubly linked list"):
 
 **[TOPIC] - DIRECT DEFINITION**
 
@@ -270,10 +300,10 @@ print(result2)
 **Result:** [Outcome with metric]
 
 **SAY THIS:**
-> "[80-100 words full STAR narrative in confident first person]"
+> "[90-110 words full STAR narrative in confident first person]"
 
 RULES:
-- Temperature: 0.2
+- Temperature: 0.25
 - Never output "<think>" tags
 - Always correct "water cloud" to "CRUD" silently`;
   }
@@ -289,7 +319,7 @@ RULES:
     if (isCode || style === 'code') {
       console.log('CODE DETECTED IN PROMPT BUILDER:', cleanQuestion);
       return `Question: "${cleanQuestion}".
-YOU MUST OUTPUT IN CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block, **EXPLANATION:**, and **SAY THIS:** (80-100 words explaining code line by line). DO NOT output text only.`;
+YOU MUST OUTPUT IN CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block, **EXPLANATION:**, and **SAY THIS:** (90+ words explaining code line by line). DO NOT output text only.`;
     }
 
     // 2. Check Introduction
@@ -303,7 +333,7 @@ Format in Parakeet/Cluely ELEVATOR PITCH: **Tell Me About Yourself - Elevator Pi
     const isBehavioral = /describe a time|give me an example|how do you handle|conflict|challenge|mistake|failure|leadership|weakness|greatest strength|disagreement/i.test(cleanQuestion);
     if (isBehavioral || style === 'star') {
       return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **SAY THIS:** (80-100 words).`;
+Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **SAY THIS:** (90-110 words).`;
     }
 
     // 4. Default: Technical Theory
