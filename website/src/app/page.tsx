@@ -3,6 +3,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { ArchitectureSection } from "@/components/ArchitectureSection";
 import { InteractiveOverlayDemo } from "@/components/InteractiveOverlayDemo";
+import { PlatformsSection } from "@/components/PlatformsSection";
 import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { PricingComparisonSection } from "@/components/PricingComparisonSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
@@ -18,6 +19,7 @@ export default function Home() {
       <FeaturesSection />
       <ArchitectureSection />
       <InteractiveOverlayDemo />
+      <PlatformsSection />
       <HowItWorksSection />
       <PricingComparisonSection />
       <TestimonialsSection />

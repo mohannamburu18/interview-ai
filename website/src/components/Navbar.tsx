@@ -44,7 +44,7 @@ export function Navbar() {
         </a>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-300">
+        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-neutral-300">
           <a href="#features" className="hover:text-brand-400 transition-colors">
             Features
           </a>
@@ -53,6 +53,9 @@ export function Navbar() {
           </a>
           <a href="#showcase" className="hover:text-brand-400 transition-colors">
             Live Simulator
+          </a>
+          <a href="#platforms" className="hover:text-brand-400 transition-colors">
+            Platforms
           </a>
           <a href="#how-it-works" className="hover:text-brand-400 transition-colors">
             How It Works
