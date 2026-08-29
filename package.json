@@ -1,9 +1,12 @@
 {
-  "name": "parakeet-free-unlimited-monorepo",
-  "version": "1.0.0",
+  "name": "interview-ai-monorepo",
+  "version": "2.0.0",
   "private": true,
-  "description": "Parakeet Free Unlimited - #1 Interview Assistant with Undetectable Overlay and 100% Free Gemini + Groq APIs",
+  "description": "Interview AI — Real-Time Technical Interview Co-Pilot with Zero Hallucinations and Instant Polyglot Code Switching",
   "scripts": {
+    "dev": "npm --prefix website run dev",
+    "build": "npm --prefix website run build",
+    "start": "npm --prefix website run start",
     "dev:web": "npm --prefix website run dev",
     "dev:electron": "npm --prefix desktop run dev",
     "electron:dev": "npm --prefix desktop run dev",
@@ -15,16 +18,14 @@
     "install:all": "npm install && npm --prefix website install && npm --prefix desktop install"
   },
   "keywords": [
-    "parakeet",
+    "interview-ai",
     "interview-copilot",
     "ai-interview",
     "groq",
-    "gemini",
     "whisper",
     "electron",
     "nextjs"
   ],
-  "author": "Parakeet Free Unlimited Team",
+  "author": "Mohan Krishna Namburu",
   "license": "MIT"
 }
-
