@@ -208,8 +208,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const now = Date.now();
     const gap = now - lastFragmentTime;
 
-    if (gap < 2200 && fragmentBuffer.length > 0) {
-      // Within 2.2 sec = same question continuation, append fragment
+    if (gap < 3000 && fragmentBuffer.length > 0) {
+      // Within 3.0 sec = same question continuation, append fragment
       fragmentBuffer.push(trimmed);
     } else {
       // New distinct question started
@@ -228,14 +228,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       mergedFragmentsCount: fragmentBuffer.length,
     });
 
-    // 900ms silence = interviewer concluded their question
+    // Finalize question to buffer on silence, but DO NOT auto-answer (wait for Ctrl+Enter)
     if (finalizeTimer) clearTimeout(finalizeTimer);
     finalizeTimer = setTimeout(() => {
       if (buildingQuestion.length >= 8) {
         const finalQuestion = mergeFragments(fragmentBuffer);
-        console.log('FINALIZED INTERVIEWER QUESTION:', finalQuestion);
+        console.log('FINALIZED QUESTION READY (WAITING FOR CTRL+ENTER):', finalQuestion);
 
-        const { answerMode, recentQuestions } = get();
+        const { recentQuestions } = get();
 
         const newRecent: RecentQuestion = {
           id: 'rq_' + Date.now(),
@@ -252,14 +252,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
           mergedFragmentsCount: fragmentBuffer.length,
           recentQuestions: updated,
         });
-
-        // In Auto Mode: trigger answer immediately on finalization
-        if (answerMode === 'auto') {
-          get().generateAIAnswer(finalQuestion, speaker);
-        }
       }
       finalizeTimer = null;
-    }, 900);
+    }, 1000);
   },
 
   triggerManualAnswer: async (questionOverride?: string) => {

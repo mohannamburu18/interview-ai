@@ -95,29 +95,65 @@ export function correctTerms(text: string): string {
 }
 
 /**
- * Merges sentence fragments and eliminates repetition loops (e.g. "in SQL in SQL in SQL")
+ * Smart Merge: Deduplicates 2-3 fragments, removes repetitions, and keeps the cleanest complete question
  */
-export function mergeFragments(fragments: string[]): string {
+export function smartMerge(fragments: string[]): string {
   if (!fragments || fragments.length === 0) return '';
-  let merged = fragments.join(' ');
+  const valid = fragments.filter(Boolean).map((f) => correctTerms(f.trim()));
+  if (valid.length === 0) return '';
 
-  // Remove duplicate repeating phrases (e.g. "what are CRUD operations in SQL in SQL")
-  merged = merged.replace(/(what are CRUD operations in SQL)(?:\s+in SQL)+/gi, '$1');
+  if (valid.length === 1) {
+    let single = valid[0];
+    single = single.replace(/\b(in SQL)(?:\s+\1\b)+/gi, 'in SQL');
+    single = single.replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1');
+    single = single.replace(/\s{2,}/g, ' ').trim();
+    single = single.charAt(0).toUpperCase() + single.slice(1);
+    if (!single.endsWith('?') && /^(what|how|tell|explain|why|can you|are you|write|implement|describe)/i.test(single)) {
+      single += '?';
+    }
+    return single;
+  }
+
+  // Similarity calculator
+  const similarity = (a: string, b: string) => {
+    const wordsA = new Set(a.toLowerCase().split(/\s+/));
+    const wordsB = new Set(b.toLowerCase().split(/\s+/));
+    const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
+    return intersection / Math.max(wordsA.size, wordsB.size);
+  };
+
+  // Deduplicate similar fragments (>65% similarity keeps longest)
+  const unique: string[] = [];
+  for (const frag of valid) {
+    const matchIdx = unique.findIndex((u) => similarity(u, frag) > 0.65);
+    if (matchIdx === -1) {
+      unique.push(frag);
+    } else if (frag.length > unique[matchIdx].length) {
+      unique[matchIdx] = frag;
+    }
+  }
+
+  let merged = unique.join(' ');
+  // Clean repeating phrases like "in SQL in SQL" or duplicate blocks
+  merged = merged.replace(/\b(in SQL)(?:\s+\1\b)+/gi, 'in SQL');
+  merged = merged.replace(/\b(what are CRUD operations in SQL)(?:.*\1)+/gi, '$1');
   merged = merged.replace(/\b(\w+ \w+ \w+)(?:\s+\1)+\b/gi, '$1');
   merged = merged.replace(/\b(\w+ \w+)(?:\s+\1)+\b/gi, '$1');
-  merged = merged.replace(/\b(\w+) \1\b/gi, '$1');
-  merged = merged.replace(/(?:in SQL\s+)+in SQL/gi, 'in SQL');
+  merged = merged.replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1');
   merged = merged.replace(/\s{2,}/g, ' ').trim();
 
-  // If contains question words, ensure single trailing ?
+  // Capitalize first letter & ensure trailing ?
   const parts = merged.split('?');
   merged = parts[0].trim();
-  if (/^(what|how|tell|explain|why|can you|are you|describe|which|is there|write)/i.test(merged)) {
+  merged = merged.charAt(0).toUpperCase() + merged.slice(1);
+  if (!merged.endsWith('?') && /^(what|how|tell|explain|why|can you|are you|write|implement|describe)/i.test(merged)) {
     merged += '?';
   }
 
   return merged;
 }
+
+export const mergeFragments = smartMerge;
 
 export class PromptEngine {
   /**
@@ -132,7 +168,19 @@ FORMATTING RULES:
 - Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts. Never output a plain wall of paragraph text.
 - Headings: Always keep headings like **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
 - REMOVE PROD TRADE-OFF completely. Only use **REAL WORLD:** when applicable for industry usage.
-- SAY THIS MUST BE 80-120 WORDS: Long, comprehensive, professional, and ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context with your stack (Java 17, Spring Boot, AWS, SQL), and why it is important.
+- SAY THIS MUST BE 90-130 WORDS: Detailed, comprehensive, and ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context with your stack (Java 17, Spring Boot, AWS, SQL), and why it is important.
+
+CRITICAL CODE vs THEORY AUTO-DETECTION:
+
+If the question asks for code (e.g. "write code", "write down", "python code", "java code", "code for", "program", "implement a", "create a function", "adding two strings"):
+-> YOU ARE IN CODE MODE.
+-> MUST include:
+   1) **[TOPIC] - CODE & LOGIC**
+   2) **CORE SYNTAX:**
+   3) **CODE SNIPPET:** with \`\`\`python or \`\`\`java block with complete runnable code (Method 1 + Method 2)
+   4) **EXPLANATION:** bullets
+   5) **SAY THIS:** (80-110 words) explaining the code line by line in spoken words.
+-> NEVER output theory or plain text when code is asked!
 
 CANDIDATE PROFILE:
 - Candidate Name: ${candidateName || 'Candidate'}
@@ -142,29 +190,37 @@ CANDIDATE PROFILE:
 ${resumeText || "Java and Spring Boot engineer with 3+ years experience building scalable, secure RESTful platforms. At Nyeras Edutech, cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics. Stack: Java 17, Spring Boot, AWS, React, SQL."}
 """
 
-INTELLIGENT ROUTER & TEMPLATES:
+TEMPLATES:
 
-1. IF QUESTION ASKS FOR CODE (e.g. "write code", "python code", "java code", "implement", "program for", "code for adding"):
+1. FOR CODE QUESTIONS (e.g. "write down a python code for adding two strings"):
 
-**[TOPIC] - CODE & LOGIC**
+**PYTHON STRING ADDITION - CODE & LOGIC**
 
 **CORE SYNTAX:**
-• [Syntax rule 1]
-• [Syntax rule 2]
+• Concatenation using + operator
+• join() method for sequence concatenation
 
 **CODE SNIPPET:**
-\`\`\`[language]
-[Clean, production-grade code with concise comments]
+\`\`\`python
+# Method 1: Using + operator
+str1 = "Hello"
+str2 = "World"
+result = str1 + str2
+print(result)  # Output: HelloWorld
+
+# Method 2: Using join() - efficient for multiple strings
+result2 = "".join([str1, str2])
+print(result2)
 \`\`\`
 
 **EXPLANATION:**
-• [How the code works, e.g. immutability, efficiency]
-• [Time & Space Complexity or optimal alternative]
+• + operator creates a new string object (immutable)
+• join() is O(n) linear and avoids quadratic copy overhead
 
 **SAY THIS:**
-> "[80-100 words explaining the code solution clearly in spoken words, describing variables, methods used, complexity, and how you apply this in production]"
+> "In Python, to concatenate or add two strings, we can use the plus operator. For example, setting str1 to 'Hello' and str2 to 'World', then result equals str1 plus str2 produces 'HelloWorld'. Because strings in Python are immutable, each plus operation creates a new string object in memory. When combining multiple strings or working in loops, I prefer using empty string dot join with a list, which runs in linear O of N time and avoids unnecessary memory reallocation."
 
-2. IF QUESTION IS THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "What is Docker", "Double linked list"):
+2. FOR THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "Double linked list"):
 
 **[TOPIC] - DIRECT DEFINITION**
 
@@ -180,9 +236,9 @@ INTELLIGENT ROUTER & TEMPLATES:
 • [Where used in industry, e.g. Relational DB transactions, browser history, cache synchronization]
 
 **SAY THIS:**
-> "[80-120 words comprehensive spoken explanation: 2-3 lines definition, 1 line SQL keywords example, 1 line production experience at Nyeras Edutech with Spring Boot/Java/AWS/indexing, and 1 line closing why it forms the backbone of applications]"
+> "[90-130 words comprehensive spoken explanation: 2-3 lines definition, 1 line SQL keywords example, 1 line production experience at Nyeras Edutech with Spring Boot/Java/AWS/indexing, and 1 line closing why it forms the backbone of applications]"
 
-3. IF QUESTION IS "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
+3. FOR "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
 
 **Tell Me About Yourself - Elevator Pitch**
 
@@ -202,7 +258,7 @@ INTELLIGENT ROUTER & TEMPLATES:
 **SAY THIS:**
 > "I'm a Java and Spring Boot engineer specializing in building scalable, secure RESTful platforms. At Nyeras Edutech, I cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics across our microservices. My core stack centers on Java 17, Spring Boot, AWS, and React. I'm excited about this opportunity at ${companyName || 'Barclays'} to drive digital innovation, deliver resilient software, and contribute to your customer experience goals."
 
-4. IF BEHAVIORAL (Challenge, Conflict, Leadership):
+4. FOR BEHAVIORAL:
 
 **[TOPIC] - STAR**
 
@@ -217,7 +273,7 @@ INTELLIGENT ROUTER & TEMPLATES:
 > "[80-100 words full STAR narrative in confident first person]"
 
 RULES:
-- Temperature: 0.3
+- Temperature: 0.2
 - Never output "<think>" tags
 - Always correct "water cloud" to "CRUD" silently`;
   }
@@ -229,10 +285,11 @@ RULES:
     const cleanQuestion = correctTerms(question.trim());
 
     // 1. Check Code Question
-    const isCode = /write (a )?(function|code|algorithm|program|script)|python code|java code|implement|solve|leetcode|reverse a|merge two|binary search|adding two strings/i.test(cleanQuestion);
-    if (isCode) {
+    const isCode = /write (a )?(function|code|algorithm|program|script|down)|python code|java code|code for|program for|implement|create a function|coding question|adding two strings|two strings/i.test(cleanQuestion);
+    if (isCode || style === 'code') {
+      console.log('CODE DETECTED IN PROMPT BUILDER:', cleanQuestion);
       return `Question: "${cleanQuestion}".
-Format in Parakeet/Cluely CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:**, **EXPLANATION:**, and **SAY THIS:** (80-100 words explaining code). NO PROD TRADE-OFF.`;
+YOU MUST OUTPUT IN CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:** with \`\`\`python or \`\`\`java runnable code block, **EXPLANATION:**, and **SAY THIS:** (80-100 words explaining code line by line). DO NOT output text only.`;
     }
 
     // 2. Check Introduction
@@ -251,7 +308,7 @@ Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Resul
 
     // 4. Default: Technical Theory
     return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely THEORY MODE: **[TOPIC] - DIRECT DEFINITION**, **What:**, **SQL MAPPING / KEY OPERATIONS:** bullets, **REAL WORLD:** bullets, and **SAY THIS:** (80-120 words detailed spoken script with Java/Spring Boot/AWS context). NO PROD TRADE-OFF.`;
+Format in Parakeet/Cluely THEORY MODE: **[TOPIC] - DIRECT DEFINITION**, **What:**, **SQL MAPPING / KEY OPERATIONS:** bullets, **REAL WORLD:** bullets, and **SAY THIS:** (90-130 words detailed spoken script with Java/Spring Boot/AWS context).`;
   }
 
   public static buildInterviewerUserPrompt(question: string): string {

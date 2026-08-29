@@ -159,7 +159,8 @@ export class GroqService {
 
     for (const currentModel of availableModels) {
       try {
-        console.log(`[Groq LLM] Calling model [${currentModel}]:`, userMessage);
+        const isCodeDetected = /write.*code|python code|java code|code for|program|implement|adding.*string/i.test(userMessage);
+        console.log(`[Groq LLM] Calling model [${currentModel}] (Code Detected: ${isCodeDetected}):`, userMessage);
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -173,8 +174,8 @@ export class GroqService {
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userMessage },
             ],
-            temperature: 0.3,
-            max_tokens: 350,
+            temperature: 0.2,
+            max_tokens: 500,
             stream: true,
           }),
           signal,
