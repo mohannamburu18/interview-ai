@@ -56,6 +56,11 @@ export const LiveTranscriptionBox: React.FC = () => {
                 Finalized Question:
               </span>
             )}
+            {useAppStore.getState().mergedFragmentsCount > 1 && (
+              <span className="text-[9px] text-cyan-400 font-mono bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+                🔗 Merged {useAppStore.getState().mergedFragmentsCount} fragments
+              </span>
+            )}
           </div>
           <p className="text-xs text-neutral-200 italic leading-relaxed break-words font-sans selection:bg-neutral-800">
             &ldquo;{liveTranscription}&rdquo;

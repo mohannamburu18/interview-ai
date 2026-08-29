@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { UserConfig, OverlayState, InterviewSessionItem, ModelMode, SpeakerType, AnswerMode, AnswerStyle } from '../types';
 import { GroqService } from '../services/groqService';
 import { GeminiService } from '../services/geminiService';
-import { PromptEngine, isHallucination, correctTerms } from '../services/promptEngine';
+import { PromptEngine, isHallucination, correctTerms, mergeFragments } from '../services/promptEngine';
 
 export interface RecentQuestion {
   id: string;
@@ -36,6 +36,7 @@ interface AppStore {
   // Active Q&A Content
   liveTranscription: string;
   isBuildingTranscript: boolean;
+  mergedFragmentsCount: number;
   setLiveTranscription: (text: string, speaker?: SpeakerType) => void;
   currentAnswer: string;
   setCurrentAnswer: (text: string) => void;
@@ -71,7 +72,7 @@ const DEFAULT_CONFIG: UserConfig = {
   companyName: '',
   candidateName: '',
   modelMode: 'balanced',
-  answerMode: 'manual', // Default to Manual for 100% user control & zero hallucination
+  answerMode: 'manual', // Default to Manual Ctrl+Enter for 100% user control
   answerStyle: 'auto',
   language: 'en',
   opacity: 90,
@@ -80,38 +81,9 @@ const DEFAULT_CONFIG: UserConfig = {
   history: [],
 };
 
-let autoAnswerDebounceTimer: NodeJS.Timeout | null = null;
-let accumulatedSentence = '';
-let lastSpeechTime = 0;
+let fragmentBuffer: string[] = [];
+let lastFragmentTime = 0;
 let finalizeTimer: NodeJS.Timeout | null = null;
-
-// Merging helper to combine sentence chunks seamlessly without duplicate words
-function mergeSentenceChunks(existing: string, incoming: string): string {
-  const prev = existing.trim();
-  const next = incoming.trim();
-  if (!prev) return next;
-  if (!next) return prev;
-
-  const prevLower = prev.toLowerCase();
-  const nextLower = next.toLowerCase();
-
-  // If next is already inside prev
-  if (prevLower.includes(nextLower)) return prev;
-
-  const prevWords = prev.split(/\s+/);
-  const nextWords = next.split(/\s+/);
-
-  // Check 1 to 4 overlapping words
-  for (let len = Math.min(4, prevWords.length, nextWords.length); len > 0; len--) {
-    const tail = prevWords.slice(-len).join(' ').toLowerCase();
-    const head = nextWords.slice(0, len).join(' ').toLowerCase();
-    if (tail === head) {
-      return [...prevWords, ...nextWords.slice(len)].join(' ');
-    }
-  }
-
-  return `${prev} ${next}`;
-}
 
 export const useAppStore = create<AppStore>((set, get) => ({
   config: DEFAULT_CONFIG,
@@ -124,6 +96,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   activeSpeaker: null,
   liveTranscription: '',
   isBuildingTranscript: false,
+  mergedFragmentsCount: 0,
   currentAnswer: '',
   isCodeMode: false,
   isOnboardingOpen: false,
@@ -208,58 +181,59 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   /**
-   * Realtime Speech Handler: Interim Streaming (<300ms) + VAD Full Sentence Merging
+   * Safe Realtime 2-Person Transcript Handler with Smart Fragment Merging
    */
-  handleIncomingTranscript: (text: string, speaker: SpeakerType, isFinal: boolean = true) => {
+  handleIncomingTranscript: (text: string, speaker: SpeakerType, _isFinal: boolean = true) => {
     let trimmed = text.trim();
     if (!trimmed) return;
 
-    // 1. If Interim (WebSpeech API streaming)
-    if (!isFinal) {
-      const correctedInterim = correctTerms(trimmed);
-      set({
-        liveTranscription: correctedInterim,
-        activeSpeaker: speaker,
-        isBuildingTranscript: true,
-      });
-      return;
-    }
-
-    // 2. If Final (Groq Whisper Sentence)
+    // Filter hallucinations & developer talk
     if (isHallucination(trimmed)) {
-      console.log('[Transcript Filter] Discarded hallucination/noise:', trimmed);
+      console.log('[Transcript Filter] Discarded filler/hallucination:', trimmed);
       return;
     }
 
-    trimmed = correctTerms(trimmed);
-    const now = Date.now();
-    const gap = now - lastSpeechTime;
-
-    if (gap < 2500 && accumulatedSentence.length > 0) {
-      // Continuation of current question
-      accumulatedSentence = correctTerms(mergeSentenceChunks(accumulatedSentence, trimmed));
-    } else {
-      // New question started
-      accumulatedSentence = trimmed;
+    // Filter candidate self-filler (e.g. candidate saying "yeah", "okay", "sure")
+    if (speaker === 'user') {
+      const isFiller = /^(yeah|yes|ok|okay|sure|got it|right|cool|hello|hi|bye)\.?$/i.test(trimmed);
+      if (isFiller) {
+        console.log('[Transcript Filter] Discarded candidate acknowledgment:', trimmed);
+        return;
+      }
     }
 
-    lastSpeechTime = now;
-    const currentQuestion = accumulatedSentence;
+    // Phonetic term correction (water cloud -> CRUD, crude -> CRUD)
+    trimmed = correctTerms(trimmed);
 
-    console.log('FULL QUESTION BUILDING:', currentQuestion);
+    const now = Date.now();
+    const gap = now - lastFragmentTime;
+
+    if (gap < 2200 && fragmentBuffer.length > 0) {
+      // Within 2.2 sec = same question continuation, append fragment
+      fragmentBuffer.push(trimmed);
+    } else {
+      // New distinct question started
+      fragmentBuffer = [trimmed];
+    }
+
+    lastFragmentTime = now;
+    const buildingQuestion = mergeFragments(fragmentBuffer);
+
+    console.log(`[Building Question (${fragmentBuffer.length} fragments)]:`, buildingQuestion);
 
     set({
-      liveTranscription: currentQuestion,
+      liveTranscription: buildingQuestion,
       activeSpeaker: speaker,
-      isBuildingTranscript: false,
+      isBuildingTranscript: true,
+      mergedFragmentsCount: fragmentBuffer.length,
     });
 
-    // Debounce finalization: 600ms silence = ready to answer
+    // 900ms silence = interviewer concluded their question
     if (finalizeTimer) clearTimeout(finalizeTimer);
     finalizeTimer = setTimeout(() => {
-      if (accumulatedSentence.length >= 8) {
-        const finalQuestion = correctTerms(accumulatedSentence.trim());
-        console.log('FINALIZED QUESTION:', finalQuestion);
+      if (buildingQuestion.length >= 8) {
+        const finalQuestion = mergeFragments(fragmentBuffer);
+        console.log('FINALIZED INTERVIEWER QUESTION:', finalQuestion);
 
         const { answerMode, recentQuestions } = get();
 
@@ -275,6 +249,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         set({
           liveTranscription: finalQuestion,
           isBuildingTranscript: false,
+          mergedFragmentsCount: fragmentBuffer.length,
           recentQuestions: updated,
         });
 
@@ -284,7 +259,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
       }
       finalizeTimer = null;
-    }, 600);
+    }, 900);
   },
 
   triggerManualAnswer: async (questionOverride?: string) => {
@@ -298,6 +273,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     console.log(`[Manual Answer Triggered] [${activeSpeaker || 'interviewer'}]: "${targetQuestion}"`);
     await get().generateAIAnswer(targetQuestion, activeSpeaker || 'interviewer');
+
+    // Clear fragment buffer for the next question
+    fragmentBuffer = [];
   },
 
   generateAIAnswer: async (text: string, speaker: SpeakerType = 'interviewer') => {
@@ -311,7 +289,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       currentAnswer: '',
     });
 
-    console.log(`[AppStore] Generating AI answer for speaker [${speaker}] (Style: ${answerStyle}): "${text}"`);
+    console.log(`[AppStore] Generating FAANG answer for speaker [${speaker}] (Style: ${answerStyle}): "${text}"`);
 
     const systemPrompt = PromptEngine.buildSystemPrompt({
       resumeText: config.resumeText,
@@ -334,7 +312,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       let succeeded = false;
 
-      // 1. Try Groq (Ultra-fast LLaMA 3.1 8B / 3.3 70B)
+      // 1. Try Groq (Ultra-fast LLaMA 3.1 8B Instant)
       if (config.groqApiKey) {
         try {
           const modelName = 'llama-3.1-8b-instant';
@@ -394,10 +372,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearActiveSession: () => {
-    accumulatedSentence = '';
+    fragmentBuffer = [];
     set({
       liveTranscription: '',
       isBuildingTranscript: false,
+      mergedFragmentsCount: 0,
       currentAnswer: '',
       overlayState: 'idle',
     });

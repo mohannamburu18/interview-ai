@@ -23,12 +23,10 @@ export class DualAudioCaptureEngine {
   private systemAnalyser: AnalyserNode | null = null;
   private micAnalyser: AnalyserNode | null = null;
   private animationFrameId: number | null = null;
+  private sliceIntervalTimer: NodeJS.Timeout | null = null;
 
-  // VAD & Silence tracking
-  private isSpeaking: boolean = false;
-  private isFinalizing: boolean = false;
-  private silenceStartTime: number | null = null;
   private currentSpeaker: SpeakerType = 'interviewer';
+  private hasSpeechInCurrentSlice: boolean = false;
   private recentTranscriptContext: string = '';
 
   constructor(
@@ -54,7 +52,7 @@ export class DualAudioCaptureEngine {
     let micCaptured = false;
 
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    this.audioContext = new AudioContextClass({ sampleRate: 48000 });
+    this.audioContext = new AudioContextClass();
 
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
@@ -75,10 +73,10 @@ export class DualAudioCaptureEngine {
 
       if (this.micStream && this.micStream.getAudioTracks().length > 0) {
         micCaptured = true;
-        console.log('Mic Stream Active. Tracks:', this.micStream.getAudioTracks().length);
+        console.log('Mic Stream Tracks:', this.micStream.getAudioTracks().length);
         const micSource = this.audioContext.createMediaStreamSource(this.micStream);
         this.micAnalyser = this.audioContext.createAnalyser();
-        this.micAnalyser.fftSize = 512;
+        this.micAnalyser.fftSize = 256;
         this.micAnalyser.smoothingTimeConstant = 0.2;
         micSource.connect(this.micAnalyser);
         micSource.connect(destination);
@@ -117,10 +115,10 @@ export class DualAudioCaptureEngine {
 
       if (this.systemStream && this.systemStream.getAudioTracks().length > 0) {
         systemCaptured = true;
-        console.log('System Audio Active. Tracks:', this.systemStream.getAudioTracks().length);
+        console.log('System Audio Tracks:', this.systemStream.getAudioTracks().length);
         const sysSource = this.audioContext.createMediaStreamSource(this.systemStream);
         this.systemAnalyser = this.audioContext.createAnalyser();
-        this.systemAnalyser.fftSize = 512;
+        this.systemAnalyser.fftSize = 256;
         this.systemAnalyser.smoothingTimeConstant = 0.2;
         sysSource.connect(this.systemAnalyser);
         sysSource.connect(destination);
@@ -133,87 +131,91 @@ export class DualAudioCaptureEngine {
       console.warn('[AudioEngine] System loopback warning:', err);
     }
 
-    // 3. Combined Stream for VAD Recording
+    // 3. Combined Stream for Continuous Recording
     this.combinedStream = destination.stream;
     const finalStream = this.combinedStream.getAudioTracks().length > 0 ? this.combinedStream : this.micStream;
 
     if (finalStream) {
-      this.initParakeetRecorder(finalStream);
-      this.startVadDetection();
+      this.startContinuousRecording(finalStream);
+      this.startVolumeMonitoring();
     }
 
     return { systemCaptured, micCaptured };
   }
 
   /**
-   * Parakeet VAD-based full-sentence recording with 800ms silence finalization
+   * Continuous 4.5-second slice recording with seamless auto-restart
    */
-  private initParakeetRecorder(stream: MediaStream) {
+  private startContinuousRecording(stream: MediaStream) {
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
       : 'audio/webm';
 
-    this.mediaRecorder = new MediaRecorder(stream, { mimeType });
-    this.audioChunks = [];
+    const cycleSlice = () => {
+      if (!this.isRunning) return;
 
-    this.mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        this.audioChunks.push(e.data);
-      }
-    };
+      try {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.stop();
+        }
 
-    this.mediaRecorder.onstop = async () => {
-      const blob = new Blob(this.audioChunks, { type: mimeType });
-      this.audioChunks = [];
-      this.isFinalizing = false;
+        this.mediaRecorder = new MediaRecorder(stream, { mimeType });
+        this.audioChunks = [];
 
-      if (blob.size >= 2500 && this.groqApiKey) {
-        try {
-          const contextPrompt = this.recentTranscriptContext
-            ? `Previous context: ${this.recentTranscriptContext}`
-            : 'Technical interview about Docker, SQL, AWS, Kubernetes, and software engineering.';
-
-          const rawTranscript = await GroqService.transcribeAudio(
-            blob,
-            this.groqApiKey,
-            this.language,
-            contextPrompt
-          );
-
-          if (rawTranscript && !isHallucination(rawTranscript)) {
-            const corrected = correctTerms(rawTranscript.trim());
-            this.recentTranscriptContext = corrected;
-            const speaker = this.systemStream ? this.currentSpeaker : this.classifySpeaker(corrected);
-
-            console.log('SENTENCE FINALIZED:', corrected, 'Size:', blob.size, 'Speaker:', speaker);
-            this.callbacks.onTranscript(corrected, speaker, true);
-            this.callbacks.onSilenceDetected(speaker, corrected);
+        this.mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            this.audioChunks.push(e.data);
           }
-        } catch (err) {
-          console.error('[Groq Whisper Finalize Error]:', err);
-        }
-      }
+        };
 
-      // Automatically restart for next sentence
-      setTimeout(() => {
-        if (this.isRunning && this.mediaRecorder && this.mediaRecorder.state === 'inactive') {
-          try {
-            this.mediaRecorder.start(100);
-          } catch (e) {}
-        }
-      }, 100);
+        this.mediaRecorder.onstop = async () => {
+          if (this.audioChunks.length > 0 && this.hasSpeechInCurrentSlice) {
+            const blob = new Blob(this.audioChunks, { type: mimeType });
+            this.audioChunks = [];
+            this.hasSpeechInCurrentSlice = false;
+
+            console.log('BLOB SIZE:', blob.size);
+
+            if (blob.size >= 2000 && this.groqApiKey) {
+              try {
+                const text = await GroqService.transcribeAudio(
+                  blob,
+                  this.groqApiKey,
+                  this.language,
+                  this.recentTranscriptContext
+                );
+
+                if (text && !isHallucination(text)) {
+                  const cleaned = correctTerms(text.trim());
+                  this.recentTranscriptContext = cleaned;
+                  const speaker = this.systemStream ? this.currentSpeaker : this.classifySpeaker(cleaned);
+
+                  console.log('TRANSCRIPT:', cleaned, `[Speaker: ${speaker}]`);
+                  this.callbacks.onTranscript(cleaned, speaker, true);
+                  this.callbacks.onSilenceDetected(speaker, cleaned);
+                }
+              } catch (err) {
+                console.error('Transcription error:', err);
+              }
+            }
+          }
+        };
+
+        this.mediaRecorder.start();
+      } catch (err) {
+        console.warn('[Recorder Cycle Error]:', err);
+      }
     };
 
-    try {
-      this.mediaRecorder.start(100);
-    } catch (e) {}
+    cycleSlice();
+    this.sliceIntervalTimer = setInterval(cycleSlice, 4500);
   }
 
   /**
-   * Real-time VAD speech detection (800ms silence = sentence completion)
+   * Real-time Volume & Speaker Diarization Monitoring
    */
-  private startVadDetection() {
-    const checkSpeech = () => {
+  private startVolumeMonitoring() {
+    const checkVolume = () => {
       if (!this.isRunning) return;
 
       let sysVol = 0;
@@ -233,48 +235,24 @@ export class DualAudioCaptureEngine {
         micVol = micAvg / 255;
       }
 
-      const maxLevel = Math.max(sysVol, micVol);
-      const now = Date.now();
+      // Detect speech activity
+      if (sysVol > 0.006 || micVol > 0.006) {
+        this.hasSpeechInCurrentSlice = true;
 
-      // Speaker Classification based on active stream volume
-      if (sysVol > micVol + 0.01 && sysVol > 0.012) {
-        this.currentSpeaker = 'interviewer';
-      } else if (micVol > 0.012) {
-        this.currentSpeaker = 'user';
-      }
-
-      // Voice Activity Detection
-      if (maxLevel > 0.012) {
-        // Speaking actively
-        this.isSpeaking = true;
-        this.silenceStartTime = null;
-        this.callbacks.onSpeechStart(this.currentSpeaker);
-
-        if (this.mediaRecorder && this.mediaRecorder.state === 'inactive' && !this.isFinalizing) {
-          this.audioChunks = [];
-          this.mediaRecorder.start(100);
-        }
-      } else if (this.isSpeaking) {
-        // Silence detected after speech
-        if (!this.silenceStartTime) {
-          this.silenceStartTime = now;
-        } else if (now - this.silenceStartTime > 800 && !this.isFinalizing) {
-          // 800ms silence = Finalize full sentence in one go
-          this.isFinalizing = true;
-          this.isSpeaking = false;
-          this.silenceStartTime = null;
-
-          if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            this.mediaRecorder.stop();
-          }
+        if (sysVol > micVol + 0.01) {
+          this.currentSpeaker = 'interviewer';
+          this.callbacks.onSpeechStart('interviewer');
+        } else if (micVol > 0.006) {
+          this.currentSpeaker = 'user';
+          this.callbacks.onSpeechStart('user');
         }
       }
 
       this.callbacks.onVolumeChange(sysVol, micVol);
-      this.animationFrameId = requestAnimationFrame(checkSpeech);
+      this.animationFrameId = requestAnimationFrame(checkVolume);
     };
 
-    checkSpeech();
+    checkVolume();
   }
 
   /**
@@ -301,6 +279,10 @@ export class DualAudioCaptureEngine {
 
   public stop(): void {
     this.isRunning = false;
+    if (this.sliceIntervalTimer) {
+      clearInterval(this.sliceIntervalTimer);
+      this.sliceIntervalTimer = null;
+    }
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
