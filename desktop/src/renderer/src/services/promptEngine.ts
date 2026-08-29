@@ -136,11 +136,13 @@ export function correctTechTerms(text: string): string {
   let t = text;
 
   // Cisco TrustSec mishears
-  t = t.replace(/trust\s*sick\s*s-?i-?c-?k/gi, 'TrustSec');
+  t = t.replace(/trust\s*sick\s*s-?i-?c-?k/gi, 'Cisco TrustSec');
   t = t.replace(/trust\s*sick/gi, 'TrustSec');
   t = t.replace(/trust\s*six/gi, 'TrustSec');
+  t = t.replace(/tustsec/gi, 'TrustSec');
   t = t.replace(/trustsec/gi, 'TrustSec');
   t = t.replace(/\bS-I-C-K\b/gi, 'TrustSec');
+  t = t.replace(/cisco\s*trust\s*sec/gi, 'Cisco TrustSec');
 
   const dict: Record<string, string> = {
     'water cloud operations': 'CRUD operations in SQL',
@@ -323,7 +325,7 @@ export const mergeFragments = perfectMerge;
 
 export class PromptEngine {
   /**
-   * Constructs Parakeet AI Master System Prompt
+   * Constructs Parakeet AI Master System Prompt with Humanized "SAY THIS" section
    */
   public static buildSystemPrompt(context: PromptContext): string {
     const { resumeText, jobDescription, companyName, candidateName } = context;
@@ -332,14 +334,27 @@ export class PromptEngine {
 
 FORMATTING RULES:
 - Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts.
-- Keep headings: **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
-- SAY THIS MUST BE 90-130 WORDS: 4-5 sentences, detailed, ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context (Java 17, Spring Boot, AWS, Nyeras Edutech MTTD), and closing rationale.
-- CODE AUTO-DETECTION:
-  If the question asks to write code, implement, or program:
-  1. You MUST output CODE MODE.
-  2. MUST include **CODE SNIPPET:** containing BOTH the Python implementation in a \`\`\`python block AND the Java implementation in a \`\`\`java block so the user can switch tabs instantly.
-  3. Include **EXPLANATION:** bullets.
-  4. Include **SAY THIS:** (90+ words) walking through the code logic line by line.
+- Keep technical sections detailed and structured: **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**.
+
+RULES FOR "SAY THIS:" SECTION (CRITICAL):
+- This is what the candidate speaks out loud in the interview. It MUST sound like a natural, confident human talking face-to-face, NOT like an AI or textbook.
+- Use simple everyday conversational English, short sentences, and natural flow.
+- 90 to 130 words, 4 to 5 sentences.
+- Structure inside "SAY THIS:":
+  1st sentence: "So basically, [topic] means..." (Simple explanation in plain words).
+  2nd sentence: "For example, when..." (Simple, real-life everyday example).
+  3rd sentence: "In my project at Nyeras Edutech, I used [Java 17 / Spring Boot / AWS] to..." (Real experience with MTTD impact).
+  4th sentence: "This helps us [main benefit / why it matters]..."
+  5th sentence: Confident, natural closing.
+- Use conversational phrases: "So basically...", "For example...", "In my project...", "This helps us...". Use "I" and "we".
+- Translate complex technical definitions into simple human words that an interviewer can instantly grasp.
+
+CODE AUTO-DETECTION:
+If the question asks to write code, implement, or program:
+1. You MUST output CODE MODE.
+2. MUST include **CODE SNIPPET:** containing BOTH the Python implementation in a \`\`\`python block AND the Java implementation in a \`\`\`java block so the user can switch tabs instantly.
+3. Include **EXPLANATION:** bullets.
+4. Include **SAY THIS:** (90+ words) walking through the code logic in simple conversational human words.
 
 CANDIDATE CONTEXT:
 - Candidate Name: ${candidateName || 'Candidate'}
@@ -351,7 +366,42 @@ ${resumeText || "Java and Spring Boot engineer with 3+ years experience building
 
 TEMPLATES:
 
-1. FOR CODE QUESTIONS (e.g. "write a python code for finding a number is prime or not"):
+1. FOR SQL / CRUD / DATABASE QUESTIONS (e.g. "what are CRUD operations in SQL"):
+
+**CRUD - DIRECT DEFINITION**
+
+**What:** Create, Read, Update, Delete - 4 fundamental database operations.
+
+**SQL MAPPING:**
+• **C**reate → INSERT INTO users VALUES(...)
+• **R**ead → SELECT * FROM users WHERE id = ...
+• **U**pdate → UPDATE users SET status = 'active' WHERE id = ...
+• **D**elete → DELETE FROM users WHERE id = ...
+
+**REAL WORLD:**
+• Relational database persistence layer, transaction management, data lifecycle.
+
+**SAY THIS:**
+> "So basically, CRUD stands for Create, Read, Update, and Delete, which are the four core operations we do with any database. For example, when a user signs up, we create a record with INSERT, and when they log in or view their profile, we read it with SELECT. In my project at Nyeras Edutech, I used Spring Boot with JPA repositories to handle these CRUD operations for our incident detection service, making sure queries had proper indexing to prevent slow lookups. This helps us manage application data reliably and safely without manual database overhead."
+
+2. FOR CISCO TRUSTSEC / NETWORKING / SECURITY:
+
+**CISCO TRUSTSEC - DIRECT DEFINITION**
+
+**What:** Next-generation security architecture that enforces role-based access control (RBAC) using Security Group Tags (SGTs) instead of complex IP-based ACLs.
+
+**KEY OPERATIONS:**
+• **Classification:** Ingress switches assign SGT tags to endpoints based on identity (802.1X / ISE)
+• **Propagation:** Tags are transported across switches via SXP (SGT Exchange Protocol) or Ethernet headers
+• **Enforcement:** Egress switches apply SGACLs (Security Group ACLs) to permit/deny traffic
+
+**REAL WORLD:**
+• Micro-segmentation in enterprise networks, zero-trust campus security, decoupling policy from IP addressing.
+
+**SAY THIS:**
+> "So basically, Cisco TrustSec is a smart way to manage network security using identity tags instead of managing thousands of messy IP addresses. For example, when a device connects, Cisco ISE assigns it a Security Group Tag based on who the user is, rather than where they are plugged in. In my work designing secure microservice communications, applying this tag-based model helps enforce Zero Trust policies consistently across different environments. This helps us stop unauthorized lateral movement and keeps access control clean and scalable."
+
+3. FOR CODE QUESTIONS (e.g. "write a python code for finding a number is prime or not"):
 
 **PRIME CHECK - CODE & LOGIC**
 
@@ -396,26 +446,9 @@ public class PrimeCheck {
 • Checking up to sqrt(n) optimizes from O(n) to O(sqrt(n))
 
 **SAY THIS:**
-> "To check if a number is prime in Python, I define a function is_prime that first checks if n is less than or equal to 1, returning False. Then, instead of checking all numbers up to n, I optimize the loop to check divisibility from 2 up to the integer square root of n plus 1. If any number divides evenly, I return False, otherwise True. This reduces the time complexity from linear O of N down to O of square root of N, which is optimal for high-throughput validation in production."
+> "So basically, to check if a number is prime, we want to see if it has any divisors other than 1 and itself. In my solution, I first check if the number is less than or equal to 1, which immediately returns false. Then, instead of checking every single number up to n, we only need to test divisors up to the square root of n. In production code, this optimization cuts our runtime from linear O of N down to O of square root of N, which is super fast and prevents unnecessary CPU load."
 
-2. FOR CISCO TRUSTSEC / NETWORKING / SECURITY:
-
-**CISCO TRUSTSEC - DIRECT DEFINITION**
-
-**What:** Next-generation security architecture that enforces role-based access control (RBAC) using Security Group Tags (SGTs) instead of complex IP-based ACLs.
-
-**KEY OPERATIONS:**
-• **Classification:** Ingress switches assign SGT tags to endpoints based on identity (802.1X / ISE)
-• **Propagation:** Tags are transported across switches via SXP (SGT Exchange Protocol) or Ethernet headers
-• **Enforcement:** Egress switches apply SGACLs (Security Group ACLs) to permit/deny traffic
-
-**REAL WORLD:**
-• Micro-segmentation in enterprise networks, zero-trust campus security, decoupling policy from IP addressing.
-
-**SAY THIS:**
-> "Cisco TrustSec is a policy-based security framework that provides identity-based segmentation across enterprise networks. Instead of maintaining cumbersome IP-based access control lists, TrustSec classifies users and endpoints at the access layer and assigns them a Security Group Tag, or SGT, through Cisco ISE. As traffic moves across the network, egress network devices enforce granular Security Group ACLs based on source and destination tags. This decouples security policy from network topology, enabling scalable micro-segmentation and robust Zero Trust enforcement."
-
-3. FOR "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
+4. FOR "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
 
 **Tell Me About Yourself - Elevator Pitch**
 
@@ -433,7 +466,7 @@ public class PrimeCheck {
 • Support location strategy & CX goals
 
 **SAY THIS:**
-> "I'm a Java and Spring Boot engineer specializing in building scalable, secure RESTful platforms. At Nyeras Edutech, I cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics across our microservices. My core stack centers on Java 17, Spring Boot, AWS, and React. I'm excited about this opportunity at ${companyName || 'Barclays'} to drive digital innovation, deliver resilient software, and contribute to your customer experience goals."
+> "I'm a Java and Spring Boot engineer with over three years of experience building secure, scalable RESTful services. At Nyeras Edutech, I focused on improving platform reliability where I reduced mean time to detection from several hours down to under ten minutes by implementing structured logging and automated metrics. My main stack is Java 17, Spring Boot, AWS, and SQL. I'm really excited about this role at ${companyName || 'Barclays'} because I want to bring my experience in building resilient, high-throughput systems to support your digital transformation goals."
 
 RULES:
 - Temperature: 0.25
@@ -457,26 +490,26 @@ Include:
 2) **CORE SYNTAX:**
 3) **CODE SNIPPET:** containing BOTH \`\`\`python and \`\`\`java runnable code blocks so the candidate can switch between tabs instantly.
 4) **EXPLANATION:**
-5) **SAY THIS:** (90+ words walking through the code in spoken words).`;
+5) **SAY THIS:** (90-130 words, simple human conversational walkthrough of the logic).`;
     }
 
     // 2. Check Introduction
     const isIntro = /tell me about yourself|introduce yourself|walk me through your resume|who are you|give me your background|brief intro/i.test(cleanQuestion);
     if (isIntro) {
       return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely ELEVATOR PITCH: **Tell Me About Yourself - Elevator Pitch**, **Current:**, **Core Stack:**, **Impact @ Nyeras Edutech:**, **Why Barclays:**, and **SAY THIS:** (100-120 words rich script).`;
+Format in Parakeet/Cluely ELEVATOR PITCH: **Tell Me About Yourself - Elevator Pitch**, **Current:**, **Core Stack:**, **Impact @ Nyeras Edutech:**, **Why Barclays:**, and **SAY THIS:** (100-120 words simple conversational script).`;
     }
 
     // 3. Check Behavioral
     const isBehavioral = /describe a time|give me an example|how do you handle|conflict|challenge|mistake|failure|leadership|weakness|greatest strength|disagreement/i.test(cleanQuestion);
     if (isBehavioral || style === 'star') {
       return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **SAY THIS:** (90-110 words).`;
+Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **SAY THIS:** (90-110 words conversational narrative).`;
     }
 
     // 4. Default: Technical Theory
     return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely THEORY MODE: **[TOPIC] - DIRECT DEFINITION**, **What:**, **SQL MAPPING / KEY OPERATIONS:** bullets, **REAL WORLD:** bullets, and **SAY THIS:** (90-130 words detailed spoken script with Java/Spring Boot/AWS context).`;
+Format in Parakeet/Cluely THEORY MODE: **[TOPIC] - DIRECT DEFINITION**, **What:**, **SQL MAPPING / KEY OPERATIONS:** bullets, **REAL WORLD:** bullets, and **SAY THIS:** (90-130 words, simple human conversational explanation with "So basically...", "For example...", "In my project at Nyeras Edutech...", "This helps us...").`;
   }
 
   public static buildInterviewerUserPrompt(question: string): string {
