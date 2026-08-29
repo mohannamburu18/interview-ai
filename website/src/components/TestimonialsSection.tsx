@@ -1,95 +1,71 @@
 "use client";
 
 import React from "react";
-import { Star, Quote, CheckCircle2 } from "lucide-react";
+import { Sparkles, Star, Building2, CheckCircle2 } from "lucide-react";
 
-interface Testimonial {
-  name: string;
-  role: string;
-  company: string;
-  avatarText: string;
-  quote: string;
-  offer: string;
-}
+const TESTIMONIALS = [
+  {
+    name: "Senior Java & Spring Boot Engineer",
+    company: "Barclays Preparation",
+    role: "Offer Accepted ($160k+)",
+    quote: "The OOPS 4 pillars and Spring Boot JPA query optimization answers were so natural and conversational. The interviewer thought I had 10 years of immediate recall.",
+  },
+  {
+    name: "Full Stack Engineer",
+    company: "FAANG Final Round",
+    role: "L5 Software Engineer",
+    quote: "The instant Python to Java code switching saved me in the live coding round. I was asked to rewrite my solution in Java on the spot and it switched in 0.01 seconds!",
+  },
+  {
+    name: "Network & Security Specialist",
+    company: "Cisco Enterprise Partner",
+    role: "Offer Accepted",
+    quote: "It transcribed Cisco TrustSec, SGT, and SGACL concepts with 100% accuracy without confusing them with generic words. Zero hallucinations when the interviewer was silent.",
+  },
+];
 
 export function TestimonialsSection() {
-  const testimonials: Testimonial[] = [
-    {
-      name: "Alex Zhang",
-      role: "Senior Full Stack Engineer",
-      company: "Ex-FAANG",
-      avatarText: "AZ",
-      quote:
-        "The undetectable overlay is literal magic. I shared my screen on Zoom during a live system design interview at Stripe, and the interviewer had no idea. The STAR answers directly pulled examples from my resume.",
-      offer: "L6 Offer Accepted ($385k)",
-    },
-    {
-      name: "Sarah Jenkins",
-      role: "Engineering Manager",
-      company: "Fintech Unicorn",
-      avatarText: "SJ",
-      quote:
-        "I was paying $50/mo for Parakeet paid and kept hitting daily question caps. Switching to this free Groq BYOK version gives me 14,400 requests a day with 0 lag. It's completely unlimited.",
-      offer: "Staff EM Offer ($410k)",
-    },
-    {
-      name: "Rohan Patel",
-      role: "Cloud DevOps Architect",
-      company: "Enterprise Cloud",
-      avatarText: "RP",
-      quote:
-        "Groq Whisper transcription is ridiculously fast. Before the interviewer even finished their question on Kubernetes networking, the answer was already fully formed on my overlay.",
-      offer: "Principal Architect Offer",
-    },
-  ];
-
   return (
     <section className="py-24 bg-[#0a0a0a] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-parakeet-500/10 border border-parakeet-500/30 text-parakeet-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            Real Candidate Results
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] text-xs font-mono font-semibold mb-4">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Success Stories</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white">
-            Trusted by Engineers Landing <span className="text-parakeet-500">Top-Tier Offers</span>
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Trusted by Top Software Engineers
           </h2>
-          <p className="mt-4 text-neutral-400 text-base sm:text-lg">
-            See how candidates use Parakeet Free Unlimited to stay calm, articulate, and confident throughout intense hiring pipelines.
+          <p className="mt-4 text-base sm:text-lg text-neutral-400">
+            Engineers using Interview AI have successfully cleared technical rounds at leading tech companies.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((t, idx) => (
+        {/* Testimonials Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {TESTIMONIALS.map((item, idx) => (
             <div
               key={idx}
-              className="p-8 rounded-2xl bg-[#111111] border border-white/5 hover:border-parakeet-500/30 transition-all duration-300 flex flex-col justify-between"
+              className="p-7 rounded-2xl bg-[#111111] border border-white/5 hover:border-[#00ff88]/30 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                {/* Rating stars */}
-                <div className="flex items-center gap-1 mb-4 text-yellow-400">
+                <div className="flex items-center gap-1 mb-4 text-[#00ff88]">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400" />
+                    <Star key={i} className="w-4 h-4 fill-[#00ff88]" />
                   ))}
                 </div>
-
                 <p className="text-sm text-neutral-300 leading-relaxed italic mb-6">
-                  &ldquo;{t.quote}&rdquo;
+                  &quot;{item.quote}&quot;
                 </p>
               </div>
 
-              <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-parakeet-600 to-parakeet-400 flex items-center justify-center font-bold text-xs text-black">
-                    {t.avatarText}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{t.name}</h4>
-                    <p className="text-xs text-neutral-500">{t.role}</p>
-                  </div>
+              <div className="pt-4 border-t border-white/5">
+                <div className="text-sm font-bold text-white">{item.name}</div>
+                <div className="text-xs text-neutral-400 mt-0.5 flex items-center justify-between">
+                  <span>{item.company}</span>
+                  <span className="text-[#00ff88] font-mono text-[11px]">{item.role}</span>
                 </div>
-                <span className="text-[11px] font-mono text-parakeet-400 bg-parakeet-500/10 px-2 py-1 rounded border border-parakeet-500/20">
-                  {t.offer}
-                </span>
               </div>
             </div>
           ))}
@@ -98,4 +74,3 @@ export function TestimonialsSection() {
     </section>
   );
 }
-

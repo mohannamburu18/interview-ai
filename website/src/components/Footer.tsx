@@ -1,46 +1,70 @@
 "use client";
 
 import React from "react";
-import { Shield, Sparkles, Heart, Github, Twitter } from "lucide-react";
+import { Github, Sparkles, Heart } from "lucide-react";
+import { GITHUB_REPO_URL } from "./Navbar";
 
 export function Footer() {
   return (
-    <footer className="bg-[#070707] border-t border-white/10 py-12 text-neutral-400 text-xs">
+    <footer className="bg-[#050505] border-t border-white/10 py-12 text-xs text-neutral-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/5">
-          {/* Logo & Tag */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Logo & Info */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-parakeet-500 flex items-center justify-center text-black font-bold text-base">
-              P
+            <div className="w-8 h-8 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center text-[#00ff88]">
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-white font-bold text-sm">Parakeet Free Unlimited</span>
-              <p className="text-[11px] text-neutral-500">The 100% Free & Open-Source AI Interview Co-pilot</p>
+              <span className="font-bold text-white text-sm">Interview AI</span>
+              <span className="text-neutral-500 ml-2">— Real-Time Technical Interview Co-Pilot</span>
             </div>
           </div>
 
-          {/* Links */}
-          <div className="flex flex-wrap items-center gap-6 text-neutral-400">
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#platforms" className="hover:text-white transition-colors">Platforms</a>
-            <a href="#comparison" className="hover:text-white transition-colors">Pricing Comparison</a>
-            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-            <a href="#download" className="hover:text-parakeet-400 transition-colors">Downloads</a>
+          {/* Quick Nav Links */}
+          <div className="flex flex-wrap items-center gap-6 font-medium text-neutral-300">
+            <a href="#features" className="hover:text-[#00ff88] transition-colors">
+              Features
+            </a>
+            <a href="#how-it-works" className="hover:text-[#00ff88] transition-colors">
+              How It Works
+            </a>
+            <a href="#showcase" className="hover:text-[#00ff88] transition-colors">
+              Showcase
+            </a>
+            <a href="#comparison" className="hover:text-[#00ff88] transition-colors">
+              Comparison
+            </a>
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#00ff88] transition-colors flex items-center gap-1.5"
+            >
+              <Github className="w-3.5 h-3.5" />
+              <span>GitHub</span>
+            </a>
           </div>
-        </div>
 
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-neutral-500 text-[11px]">
-          <div className="flex items-center gap-2">
-            <span>© {new Date().getFullYear()} Parakeet Free Unlimited. Open Source MIT License.</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span>Powered by</span>
-            <span className="text-neutral-300 font-mono">Groq LLaMA 3.3 & Google Gemini 1.5</span>
+          {/* Copyright & Author */}
+          <div className="text-center md:text-right">
+            <p className="text-neutral-400">
+              Built with <Heart className="w-3 h-3 inline text-red-500 mx-0.5" /> by{" "}
+              <a
+                href="https://github.com/mohannamburu18"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-[#00ff88] font-semibold transition-colors"
+              >
+                Mohan Namburu
+              </a>{" "}
+              — Open Source
+            </p>
+            <p className="text-[11px] text-neutral-500 mt-1">
+              Released under the MIT License • 100% Free Forever
+            </p>
           </div>
         </div>
       </div>
     </footer>
   );
 }
-

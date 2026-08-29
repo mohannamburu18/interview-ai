@@ -1,153 +1,87 @@
 "use client";
 
-import React, { useState } from "react";
-import { Download, Monitor, Laptop, Terminal, Sparkles, Check, ArrowRight, ShieldCheck } from "lucide-react";
+import React from "react";
+import { Github, Star, ArrowRight, ShieldCheck, Download, Terminal, Sparkles } from "lucide-react";
+import { GITHUB_REPO_URL } from "./Navbar";
 
 export function DownloadSection() {
-  const [downloadedPlatform, setDownloadedPlatform] = useState<string | null>(null);
-
-  const handleDownload = (platform: string, filename: string) => {
-    setDownloadedPlatform(platform);
-    // Trigger download of release artifact or show instant launch helper
-    setTimeout(() => {
-      setDownloadedPlatform(null);
-    }, 4000);
-  };
-
   return (
-    <section id="download" className="py-24 bg-gradient-to-b from-[#0a0a0a] via-[#0f1511] to-[#0a0a0a] relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,136,0.08)_0,transparent_70%)] pointer-events-none" />
+    <section id="download" className="py-28 bg-[#070707] relative overflow-hidden">
+      {/* Background Neon Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-[#00ff88]/15 to-transparent blur-[140px] pointer-events-none -z-10 rounded-full" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-parakeet-500/10 border border-parakeet-500/30 text-parakeet-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            Available on All Operating Systems
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-            Download <span className="text-parakeet-500">Parakeet Free Unlimited</span>
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-neutral-300">
-            Get the native desktop overlay with anti-screen share protection and BYOK unlimited free AI access.
-          </p>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-b from-[#141414] to-[#0c0c0c] border border-white/10 p-8 sm:p-14 text-center shadow-2xl relative overflow-hidden">
+          {/* Subtle Grid Pattern Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-        {/* Download Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {/* Windows */}
-          <div className="p-8 rounded-2xl bg-[#111111] border border-parakeet-500/30 hover:border-parakeet-500 transition-all duration-300 flex flex-col justify-between shadow-glow-green-sm hover:scale-105">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-parakeet-500/10 border border-parakeet-500/30 flex items-center justify-center mb-6">
-                <Monitor className="w-7 h-7 text-parakeet-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Windows</h3>
-              <p className="text-xs text-neutral-400 mb-6">Windows 10, 11 (64-bit)</p>
-              <ul className="space-y-2.5 text-xs text-neutral-300 mb-8">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Direct audio loopback capture</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Hardware-accelerated rendering</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Auto-updates included</span>
-                </li>
-              </ul>
+          <div className="relative z-10">
+            {/* Top Pill */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] text-xs font-mono font-semibold mb-6">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Free & Open Source</span>
             </div>
-            <button
-              onClick={() => handleDownload("Windows", "Parakeet-Setup-1.0.0.exe")}
-              className="w-full py-3.5 px-4 rounded-xl bg-parakeet-500 hover:bg-parakeet-400 text-black font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-glow-green-sm"
-            >
-              <Download className="w-4 h-4" />
-              <span>{downloadedPlatform === "Windows" ? "Downloading .exe..." : "Download .exe"}</span>
-            </button>
-          </div>
 
-          {/* macOS */}
-          <div className="p-8 rounded-2xl bg-[#111111] border border-white/10 hover:border-parakeet-500/40 transition-all duration-300 flex flex-col justify-between hover:scale-105">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-[#181818] border border-white/10 flex items-center justify-center mb-6">
-                <Laptop className="w-7 h-7 text-neutral-300" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2">macOS</h3>
-              <p className="text-xs text-neutral-400 mb-6">Apple Silicon (M1/M2/M3/M4) & Intel</p>
-              <ul className="space-y-2.5 text-xs text-neutral-300 mb-8">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Universal Binary (.dmg)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Content protection for Zoom/Meet</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Optimized Metal acceleration</span>
-                </li>
-              </ul>
+            {/* Headline */}
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+              Ready to Ace Your Next Interview?
+            </h2>
+
+            {/* Subtitle */}
+            <p className="mt-4 text-base sm:text-lg text-neutral-300 max-w-2xl mx-auto font-normal leading-relaxed">
+              Clone the repository, add your free Groq API key, and get instant real-time AI assistance for your technical rounds.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a
+                href={GITHUB_REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-base transition-all duration-200 shadow-glow-green hover:scale-[1.03] active:scale-[0.98]"
+              >
+                <span>Get Started on GitHub</span>
+                <ArrowRight className="w-5 h-5" />
+              </a>
+
+              <a
+                href={GITHUB_REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-7 py-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-base border border-white/10 transition-all duration-200"
+              >
+                <Star className="w-4 h-4 text-[#00ff88] fill-[#00ff88]" />
+                <span>Star on GitHub</span>
+              </a>
             </div>
-            <button
-              onClick={() => handleDownload("macOS", "Parakeet-1.0.0.dmg")}
-              className="w-full py-3.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all border border-white/10"
-            >
-              <Download className="w-4 h-4 text-parakeet-400" />
-              <span>{downloadedPlatform === "macOS" ? "Downloading .dmg..." : "Download .dmg"}</span>
-            </button>
-          </div>
 
-          {/* Linux */}
-          <div className="p-8 rounded-2xl bg-[#111111] border border-white/10 hover:border-parakeet-500/40 transition-all duration-300 flex flex-col justify-between hover:scale-105">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-[#181818] border border-white/10 flex items-center justify-center mb-6">
-                <Terminal className="w-7 h-7 text-neutral-300" />
+            {/* Quick Command */}
+            <div className="mt-10 max-w-md mx-auto p-3 rounded-xl bg-black/60 border border-white/10 font-mono text-xs text-neutral-300 flex items-center justify-between">
+              <div className="flex items-center gap-2 truncate">
+                <Terminal className="w-4 h-4 text-[#00ff88] shrink-0" />
+                <span className="truncate">git clone https://github.com/mohannamburu18/interview-ai.git</span>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Linux</h3>
-              <p className="text-xs text-neutral-400 mb-6">Ubuntu, Debian, Fedora, Arch</p>
-              <ul className="space-y-2.5 text-xs text-neutral-300 mb-8">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>AppImage & .deb formats</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>Wayland & X11 support</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-parakeet-400" />
-                  <span>PulseAudio & PipeWire capture</span>
-                </li>
-              </ul>
+              <span className="text-[10px] text-neutral-500 uppercase ml-2 shrink-0">Terminal</span>
             </div>
-            <button
-              onClick={() => handleDownload("Linux", "Parakeet-1.0.0.AppImage")}
-              className="w-full py-3.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all border border-white/10"
-            >
-              <Download className="w-4 h-4 text-parakeet-400" />
-              <span>{downloadedPlatform === "Linux" ? "Downloading .AppImage..." : "Download .AppImage"}</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Developer Quick Run Terminal Snippet */}
-        <div className="mt-16 max-w-3xl mx-auto p-6 rounded-2xl bg-[#0c0c0c] border border-white/10">
-          <div className="flex items-center justify-between pb-3 border-b border-white/5 text-xs text-neutral-400 font-mono">
-            <span className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-parakeet-400" /> Or run from source via CLI:
-            </span>
-            <span className="text-parakeet-400">Node.js 18+</span>
+            {/* Micro guarantees */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-400">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#00ff88]" />
+                <span>Zero Subscription Fees</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#00ff88]" />
+                <span>100% Data Privacy (BYOK)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#00ff88]" />
+                <span>Windows, Mac & Linux</span>
+              </div>
+            </div>
           </div>
-          <pre className="mt-3 font-mono text-xs sm:text-sm text-neutral-200 overflow-x-auto leading-relaxed">
-            <span className="text-neutral-500"># Clone repo & start local development overlay</span><br />
-            <span className="text-parakeet-400">git clone</span> https://github.com/parakeet-free/parakeet-free-unlimited.git<br />
-            <span className="text-parakeet-400">cd</span> parakeet-free-unlimited<br />
-            <span className="text-parakeet-400">npm</span> install<br />
-            <span className="text-parakeet-400">npm</span> run electron:dev
-          </pre>
         </div>
       </div>
     </section>
   );
 }
-
