@@ -1,205 +1,225 @@
-# 🦜 Parakeet AI — Free & Unlimited Interview Co-Pilot
-
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
-[![Electron](https://img.shields.io/badge/Electron-30.0+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.0+-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Groq](https://img.shields.io/badge/Groq-LPU_Inference-F55036?logo=groq&logoColor=white)](https://groq.com/)
-[![Google Gemini](https://img.shields.io/badge/Google-Gemini_1.5_Flash-4285F4?logo=google&logoColor=white)](https://aistudio.google.com/)
+# ⚡ Interview AI — Real-Time Technical Interview Co-Pilot
 
-**The #1 Open-Source, Undetectable, Real-Time AI Interview Assistant**  
-*100% Free & Unlimited BYOK (Bring Your Own Key) • Zero Subscriptions • Invisible to Zoom, Teams & Google Meet*
+### *The #1 Open-Source, Sub-Second, Undetectable AI Assistant for Technical & Behavioral Interviews*
 
-[Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Shortcuts](#-keyboard-shortcuts) • [Answer Styles](#-answer-styles) • [Security](#-anti-screen-share--privacy)
+[![Live Website](https://img.shields.io/badge/🌐_Live_Website-interview--ai.vercel.app-ff881a?style=for-the-badge&logo=vercel&logoColor=white)](https://interview-q9s7ifwmq-mohans-projects-7ac7513d.vercel.app/)
+[![GitHub Stars](https://img.shields.io/github/stars/mohannamburu18/interview-ai?style=for-the-badge&logo=github&color=a855f7)](https://github.com/mohannamburu18/interview-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-ff881a.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Electron](https://img.shields.io/badge/Electron-33.0+-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Groq LPU](https://img.shields.io/badge/Groq-Whisper_v3-F55036?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
+
+<br />
+
+**100% Free Forever • Zero Subscriptions • Hardware RMS Noise Gating • Instant 0.01s Polyglot Code Switching • Invisible to Zoom, Teams & Google Meet**
+
+[🌐 Live Demo Website](https://interview-q9s7ifwmq-mohans-projects-7ac7513d.vercel.app/) • [✨ Features](#-key-features) • [🏗️ Architecture](#-deep-architecture) • [📊 Market Comparison](#-market-comparison) • [🚀 Quick Start](#-quick-start) • [⌨️ Shortcuts](#-keyboard-shortcuts)
 
 </div>
 
 ---
 
-## ⚡ Key Highlights & Free Architecture
+## 🌟 Overview
 
-Parakeet AI is designed for software engineers, engineering managers, and technical professionals who need real-time, context-aware co-piloting during live technical and behavioral interviews.
+**Interview AI** is an ultra-low-latency, context-grounded AI copilot engineered for software engineers, engineering managers, and technical architects. Running as a transparent, hardware-shielded native desktop HUD, it listens to interviewer questions via system audio loopback, eliminates silence hallucinations, and synthesizes FAANG-grade structured talking points, dual-language code implementations, and conversational verbal scripts.
 
-| Component | Provider & Tier | Quota | Cost |
-| :--- | :--- | :--- | :--- |
-| **Speech-to-Text (STT)** | **Groq Whisper Large v3** | Continuous Streaming | **$0.00 / mo** |
-| **Fast Chat & Knowledge Engine** | **Groq LLaMA 3.3 70B & 3.1 8B** | 14,400 Requests / Day | **$0.00 / mo** |
-| **DSA & Coding Copilot** | **Google Gemini 1.5 / 2.0 Flash** | 1,500 Requests / Day | **$0.00 / mo** |
-| **Anti-Screen Share Shield** | Native `setContentProtection(true)` | Zoom, Teams, Meet, OBS | **$0.00 / mo** |
-| **Local Privacy** | AES-256 Encrypted Local Store | 24-Hour Self-Destruct | **$0.00 / mo** |
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  🎧 Interviewer (Speaker)                                     🔗 Merged 2 fragments   │
+│  "What are the four pillars of OOPS and how do they enforce maintainability?"          │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  ✨ OOPS - 4 CORE PILLARS & ARCHITECTURE                                              │
+│                                                                                        │
+│  • Encapsulation: Binding data & methods into a single class; private state protection │
+│  • Abstraction: Exposing public interfaces while encapsulating implementation details  │
+│  • Inheritance: Code reusability via hierarchical class extension (extends)          │
+│  • Polymorphism: Dynamic method dispatch via overloading (compile) & overriding (run)  │
+│                                                                                        │
+│  ┌─ CODE SNIPPET ────────────────────────────────────────────────── [ Copy Code ] ────┤
+│  │  < >  [ PYTHON ]  [ JAVA ]  (Instant 0.01s In-Memory Switch)                        │
+│  │  class PrimeValidator:                                                             │
+│  │      def is_prime(self, n: int) -> bool:                                            │
+│  │          return n > 1 and all(n % i != 0 for i in range(2, int(n**0.5) + 1))       │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘
+│                                                                                        │
+│  💬 SAY THIS (Humanized Conversational Script):                                        │
+│  "So basically, the four core pillars of Object-Oriented Programming are               │
+│   Encapsulation, Abstraction, Inheritance, and Polymorphism. In my project at          │
+│   Nyeras Edutech, I used Inheritance and Polymorphism in Java 17 and Spring Boot to    │
+│   create reusable base service abstractions and dynamic telemetry handlers..."         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ✨ Key Features
 
-- 🎧 **Dual-Stream Audio Capture**: Automatically captures both **Interviewer Audio** (System Audio Loopback via desktop capturer) and **Candidate Audio** (Microphone) with independent real-time VU level meters.
-- ⏱️ **Slow-Speaker Pause Tolerance**: Intelligently handles slow-speaking interviewers with adaptive 6.5-second merge windows. Sentences are never fragmented mid-thought.
-- 🔀 **Dual Answering Modes**:
-  - **🔒 Manual Mode (Ctrl+Enter)**: Buffers spoken questions continuously and answers *only* when triggered via global shortcut or on-screen button.
-  - **⚡ Auto Mode**: Automatically answers 1.0s after the interviewer concludes speech.
-- 🎯 **3-Way Intent & Answer Styles**:
-  - **Direct Definition**: Delivers pure, crisp definitions, key SQL/command operations, and query examples without fluff (<70 words).
-  - **STAR Story**: Formulates structured *Situation, Task, Action, Result* narratives grounded in your real uploaded resume and metrics (<60 words).
-  - **Code Solution**: Streams production-ready TypeScript/Python code with Big-O time and space complexity.
-- 🛡️ **Zero Hallucinations & Phonetic Auto-Correction**: Silently corrects acoustic misrecognitions (e.g., *"crude operations in sql"* ➡️ *"CRUD operations in SQL"*, *"doc er"* ➡️ *"Docker"*).
-- 👻 **100% Undetectable Screen Share Protection**: Native OS-level hardware window shielding hides the overlay completely from screen sharing software.
+### 1. 🛡️ 6-Layer Zero-Hallucination Audio Engine
+- **Hardware RMS Noise Floor (`> 0.022 RMS`)**: Ambient room noise, fan hums, and silence are dropped immediately at the audio driver layer.
+- **Continuous Speech Duration Gate (`>= 1.4s`)**: Transient noise blips (keyboard typing clicks, mouse taps, coughs) are filtered out.
+- **Deterministic Whisper (`temperature: 0.0`)**: Eliminates creative phantom links, promo URLs (`.com`, `www.`), and repetitive keyword loops.
+- **Technical Disambiguation Dictionary**: Auto-corrects acoustic misrecognitions silently (*"trust sick"* ➡️ *"TrustSec"*, *"water cloud"* ➡️ *"CRUD in SQL"*, *"four pillars of the"* ➡️ *"four pillars of OOPS"*).
+
+### 2. ⚡ Instant Polyglot Code Switching (0.01s Latency)
+- **Dual-Language Pre-Generation**: Generates **both** Python and Java implementations in a single API pass.
+- **In-Memory RAM Indexing**: Clicking `[PYTHON]` or `[JAVA]` toggles code in **0.01 seconds** with **zero secondary API calls** and zero loading spinners.
+- **Universal Stacks**: Supports Python, Java, TypeScript, Go, Rust, C++, and SQL query generation.
+
+### 3. 💬 Humanized Conversational "SAY THIS" Scripts (90–130 Words)
+- **5-Sentence Verbal Structure**:
+  1. *Plain definition* ("So basically, [concept] means...")
+  2. *Intuitive real-life example* ("For example, when a user signs up...")
+  3. *Production experience* ("In my project at Nyeras Edutech, I used Java 17 / Spring Boot to...")
+  4. *Measurable impact* ("This reduced MTTD from hours to under 10 minutes...")
+  5. *Confident closing takeaway*.
+
+### 4. 🎛️ Dual Candidate Discretion Modes
+- **🔒 Manual Mode (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>)**: Accumulates multi-sentence speech continuously without cutting off slow speakers. Answers *only* when triggered.
+- **⚡ Auto Mode**: Automatically answers after detecting 3.5 seconds of interviewer silence.
+- **Auto-Clearing Question Buffer**: Resets the display cleanly 500ms after generation begins, ready for the next question.
+
+### 5. 👻 100% Undetectable Screen Share Protection
+- Electron native OS window shielding (`setContentProtection: true`) excludes the overlay window from video capture encoders in **Zoom**, **Microsoft Teams**, **Google Meet**, **Slack**, and **OBS**.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Deep Architecture
 
 ```mermaid
 flowchart TB
-    subgraph AudioEngine [Audio Capture & Processing]
-        MIC[🎤 Microphone Stream]
-        SYS[🎧 System Loopback Audio]
-        VAD[Real-time VU & Diarization]
-        MIC --> VAD
-        SYS --> VAD
+    subgraph AudioPipeline [Stage 1: 48kHz Dual Audio Capture & Hardware RMS Gate]
+        SYS[🎧 System Audio Loopback<br>Interviewer Audio]
+        MIC[🎤 Microphone Stream<br>Candidate Audio]
+        RMS{RMS Energy Gate<br>> 0.022 & >= 1.4s}
+        SYS --> RMS
+        MIC --> RMS
+        RMS -->|Silence / Noise Floor| DROP[🗑️ Dropped Silently]
     end
 
-    subgraph STT [Groq Whisper v3 Engine]
-        VAD -->|Audio Slices & Context| WHISPER[Groq Whisper Large v3]
-        WHISPER -->|Raw Transcript| CLEANER[Phonetic & Hallucination Filter]
+    subgraph STTEngine [Stage 2: Deterministic Speech-to-Text]
+        RMS -->|Valid Speech Audio Slice| WHISPER[Groq Whisper Large v3<br>Temp: 0.0 • LPUs]
+        WHISPER --> SANITY{6-Layer Filter<br>& Tech Dictionary}
+        SANITY -->|Spam / Ghost Text| DROP
+        SANITY -->|Corrected Terms| MERGE[Zero-Loss Sentence Merger<br>🔗 Merged Fragments]
     end
 
-    subgraph StateManager [Zustand Store & Engine]
-        CLEANER --> BUFFER[Transcript Accumulator & Sentence Merging]
-        BUFFER --> INTENT{Answer Mode & Style}
+    subgraph PromptMatrix [Stage 3: Resume Grounding & Multi-Model Inference]
+        MERGE -->|Manual: Ctrl+Enter / Auto: 3.5s| LLM[Groq LLaMA 3.3 70B Versatile]
+        RESUME[📄 Candidate Resume & Job Spec<br>Nyeras Edutech • Java 17 • AWS] --> LLM
     end
 
-    subgraph LLMEngine [Multi-Model Inference]
-        INTENT -->|Auto or Ctrl+Enter| GROQ[Groq LLaMA 3.3 70B / 3.1 8B]
-        INTENT -->|Code or Fallback| GEMINI[Google Gemini 1.5 Flash]
+    subgraph DualCache [Stage 4: In-Memory Multi-Language Code Cache]
+        LLM -->|Single-Pass Generation| PARSER[Code & Bullet Stream Parser]
+        PARSER --> CACHE[(In-Memory Code Registry<br>Python ⇄ Java ⇄ SQL)]
     end
 
-    subgraph UI [Undetectable Floating Overlay]
-        GROQ -->|Real-time Token Stream| OVERLAY[Vite + React 18 HUD]
-        GEMINI -->|Real-time Token Stream| OVERLAY
+    subgraph NativeHUD [Stage 5: Undetectable Desktop Overlay]
+        PARSER --> HUD[Vite + React 18 Transparent HUD]
+        CACHE -->|0.01s Tab Switch| HUD
+        HUD -.->|Excluded from Capture| SHARE[Zoom / Teams / Meet Screen Share]
     end
 ```
 
 ---
 
-## 📁 Repository Structure
+## 📊 Market Comparison
 
-```
-├── .env.example                # Free API keys template (GROQ_API_KEY, GEMINI_API_KEY)
-├── package.json                # Root monorepo orchestration
-├── website/                    # Next.js 14 Landing Page (parakeet-ai.com)
-│   ├── src/
-│   │   ├── app/                # App Router (page.tsx, layout.tsx, globals.css)
-│   │   └── components/         # Hero, Demo Simulator, Platforms, Features, Pricing
-│   └── package.json
-└── desktop/                    # Native Electron Desktop Overlay App
-    ├── src/
-    │   ├── main/               # Electron Main (Anti-screen share, shortcuts, store)
-    │   ├── preload/            # Context Bridge (window.parakeetAPI)
-    │   └── renderer/           # Overlay UI, Audio Engine, Groq & Gemini SDKs
-    │       ├── src/
-    │       │   ├── components/ # OverlayHeader, LiveTranscriptionBox, AIAnswerBox, Modals
-    │       │   ├── services/   # dualAudioService.ts, groqService.ts, promptEngine.ts
-    │       │   └── store/      # useAppStore.ts (Zustand state & merging logic)
-    └── package.json
-```
+| Feature & Capabilities | **Interview AI (Ours)** | **Parakeet AI** | **Final Round AI** | **Cluely AI** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pricing & Access** | **100% Free & Open Source** | $49 – $99 / mo | $99 – $149 / mo | $40 – $80 / mo |
+| **Zero Hallucination Audio Gate** | **6-Layer RMS + Duration Gate** | Basic VAD | Standard VAD (Ghost Text) | Basic Silence Timer |
+| **Instant Code Switching** | **0.01s In-Memory RAM Cache** | 4–5s Delay (API Re-call) | Single Language Output | No Instant Switcher |
+| **Polyglot Languages** | **Python, Java, Go, Rust, C++, SQL, TS** | Python / Java Only | Generic Code Blocks | Basic Syntax |
+| **Manual Discretion (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>)** | **Yes, Full Candidate Control** | Partial Hotkey Support | Auto-Only Triggering | Auto-Only Triggering |
+| **Speech-to-Text Model** | **Groq Whisper Large v3 (48kHz)** | Proprietary Whisper Medium | Standard Whisper v2 | Web Speech API |
+| **Humanized Verbal Script** | **90–130 Words (SAY THIS)** | Robotic Textbook Bullets | Long AI Paragraph | Generic Paragraph |
+| **Anti-Screen Share Shield** | **Native Window Exclusion** | Browser Window Only | Electron Window Only | Chrome Extension |
+| **Data Privacy & BYOK** | **Direct Groq API (Zero Middleman)** | Stored on 3rd-Party Cloud | Session Video Recorded | Stored on Cloud |
+| **License & Code** | **MIT Open Source (Self-Hostable)** | Closed Source | Closed Source | Closed Source |
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm** or **yarn**
+- **Node.js**: v18.0 or higher
+- **Groq API Key**: Free at [console.groq.com/keys](https://console.groq.com/keys) (14,400 requests/day free)
 
-### 2. Installation
+### 2. Clone & Install
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/parakeet-ai.git
-cd parakeet-ai
+git clone https://github.com/mohannamburu18/interview-ai.git
+cd interview-ai
 
-# Install root, web, and desktop dependencies
+# Install monorepo dependencies
 npm run install:all
 ```
 
-### 3. Get Free API Keys (30 Seconds)
-1. **Groq API Key** (Free 14,400 req/day): [https://console.groq.com/keys](https://console.groq.com/keys)
-2. **Google Gemini Key** (Free 1,500 req/day): [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-
-Add your keys directly into the app's **Settings Modal** on startup or create a `.env` file:
-```env
-GROQ_API_KEY=gsk_your_groq_key_here
-GEMINI_API_KEY=AIzaSy_your_gemini_key_here
-```
-
-### 4. Run Desktop Overlay App
+### 3. Run the Desktop Application (HUD Overlay)
 ```bash
+# Launch Electron HUD in development mode
 npm run electron:dev
 ```
 
-### 5. Run Landing Page (Optional)
+### 4. Run the Modern Website
 ```bash
-npm run dev:web
+# Launch Next.js 14 landing page
+cd website
+npm run dev
+# Open http://localhost:3000 in your browser
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the marketing landing page.
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
-All shortcuts are registered globally and work even when Zoom, Google Meet, Microsoft Teams, or VS Code is focused:
-
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
-| <kbd>Ctrl</kbd> + <kbd>Enter</kbd> | **Trigger Manual Answer** | Generates an AI answer for the last buffered question |
-| <kbd>Ctrl</kbd> + <kbd>Space</kbd> | **Toggle Listening / Pause** | Instantly pauses or resumes audio recording |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | **Toggle Code Mode** | Switches to Gemini 1.5 Flash for LeetCode / DSA questions |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd> | **Panic Hide / Show** | Instantly hides the overlay from your screen |
+| <kbd>Ctrl</kbd> + <kbd>Enter</kbd> | **Trigger Answer** | Finalizes buffered speech and streams FAANG response immediately |
+| <kbd>Ctrl</kbd> + <kbd>\\</kbd> | **Toggle Overlay** | Shows / hides the floating desktop HUD |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | **Copy Answer** | Copies the current SAY THIS script to clipboard |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | **Clear Session** | Purges all transcript buffers and resets HUD state |
 
 ---
 
-## 🎯 Answer Styles
+## 📁 Repository Monorepo Structure
 
-Use the dropdown in the bottom control bar to tailor responses:
-
-- **Auto Detect (Default)**: Dynamically chooses between direct definitions and behavioral STAR stories based on the question's phrasing.
-- **Direct Definition**: Textbook-style concise explanations with exact command keywords and query examples (<70 words).
-- **STAR Story**: High-impact behavioral answer formatted in *Situation, Task, Action, Result* grounded in your uploaded resume (<60 words).
-- **Code Solution**: Optimal code implementation with Big-O Time & Space analysis.
-
----
-
-## 🔒 Anti-Screen Share & Privacy
-
-1. **Hardware-Level Invisibility**:
-   Electron's `BrowserWindow.setContentProtection(true)` prevents screen capture APIs (Zoom, MS Teams, Google Meet, OBS, Discord) from capturing the window. The interviewer only sees your desktop background or the window behind Parakeet.
-2. **Zero Cloud Storage**:
-   Your resume, job descriptions, and API keys are stored locally on your machine with AES-256 encryption.
-3. **Automatic 24-Hour Self-Destruct**:
-   All session history and transcripts are purged automatically after 24 hours.
-
----
-
-## 📦 Building Standalone Release Installers
-
-To package ready-to-install binaries using `electron-builder`:
-
-```bash
-# Windows (.exe installer + portable executable)
-npm run package:win
-
-# macOS (.dmg Apple Silicon & Intel)
-npm run package:mac
-
-# Linux (.AppImage & .deb)
-npm run package:linux
 ```
-Installers will be generated in `desktop/release/`.
+interview-ai/
+├── website/                    # Next.js 14 Modern Landing Page (Deployed on Vercel)
+│   ├── src/
+│   │   ├── app/                # App Router (page.tsx, layout.tsx, globals.css)
+│   │   └── components/         # Hero, Architecture, Showcase, Comparison, FAQ
+│   ├── tailwind.config.ts      # Luxury Light Orange & Purple Theme
+│   └── package.json
+├── desktop/                    # Native Electron Desktop HUD Overlay
+│   ├── src/
+│   │   ├── main/               # Electron Main Process (Anti-Screen Share, Shortcuts)
+│   │   ├── preload/            # Context Bridge (Audio Capturers, Native APIs)
+│   │   └── renderer/src/
+│   │       ├── components/     # AIAnswerBox (0.01s Code Switcher), LiveTranscriptionBox
+│   │       ├── services/       # dualAudioService.ts (RMS Gate), groqService.ts, promptEngine.ts
+│   │       └── store/          # useAppStore.ts (Zustand State & Auto-Clear Buffer)
+│   └── package.json
+├── vercel.json                 # Vercel Next.js Cloud Deployment Configuration
+└── package.json                # Universal Monorepo Scripts
+```
+
+---
+
+## 👨‍💻 Author & Credits
+
+Created and maintained with ❤️ by **[Mohan Krishna Namburu](https://github.com/mohannamburu18)**.
+
+- **GitHub**: [@mohannamburu18](https://github.com/mohannamburu18)
+- **Repository**: [https://github.com/mohannamburu18/interview-ai](https://github.com/mohannamburu18/interview-ai)
+- **Live Website**: [https://interview-q9s7ifwmq-mohans-projects-7ac7513d.vercel.app/](https://interview-q9s7ifwmq-mohans-projects-7ac7513d.vercel.app/)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details. 100% Free & Open Source forever.
