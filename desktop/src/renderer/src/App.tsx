@@ -89,8 +89,8 @@ export const App: React.FC = () => {
       // Dual Audio Capture Engine (System Loopback + Microphone)
       dualAudioEngineRef.current = new DualAudioCaptureEngine(
         {
-          onTranscript: (text, speaker) => {
-            handleIncomingTranscript(text, speaker);
+          onTranscript: (text, speaker, isFinal) => {
+            handleIncomingTranscript(text, speaker, isFinal);
           },
           onVolumeChange: (sysVol, micVol) => {
             setVolumes(sysVol, micVol);
@@ -99,7 +99,7 @@ export const App: React.FC = () => {
             setOverlayState('listening');
           },
           onSilenceDetected: (speaker, fullTranscript) => {
-            handleIncomingTranscript(fullTranscript, speaker);
+            handleIncomingTranscript(fullTranscript, speaker, true);
           },
         },
         config.groqApiKey,

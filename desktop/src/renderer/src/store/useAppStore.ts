@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { UserConfig, OverlayState, InterviewSessionItem, ModelMode, SpeakerType, AnswerMode, AnswerStyle } from '../types';
 import { GroqService } from '../services/groqService';
 import { GeminiService } from '../services/geminiService';
-import { PromptEngine, correctTechnicalTerms } from '../services/promptEngine';
-import { isValidTranscript } from '../services/dualAudioService';
+import { PromptEngine, isHallucination, correctTerms } from '../services/promptEngine';
 
 export interface RecentQuestion {
   id: string;
@@ -54,7 +53,7 @@ interface AppStore {
   setIsCodeAssistantOpen: (open: boolean) => void;
 
   // Actions
-  handleIncomingTranscript: (text: string, speaker: SpeakerType) => void;
+  handleIncomingTranscript: (text: string, speaker: SpeakerType, isFinal?: boolean) => void;
   triggerManualAnswer: (questionOverride?: string) => Promise<void>;
   generateAIAnswer: (text: string, speaker?: SpeakerType) => Promise<void>;
   generateFollowUp: () => Promise<void>;
@@ -62,9 +61,11 @@ interface AppStore {
   deleteSessionItem: (id: string) => void;
 }
 
+const metaEnv = (import.meta as any).env || {};
+
 const DEFAULT_CONFIG: UserConfig = {
-  groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
-  geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || '',
+  groqApiKey: metaEnv.VITE_GROQ_API_KEY || '',
+  geminiApiKey: metaEnv.VITE_GEMINI_API_KEY || '',
   resumeText: '',
   jobDescription: '',
   companyName: '',
@@ -80,17 +81,9 @@ const DEFAULT_CONFIG: UserConfig = {
 };
 
 let autoAnswerDebounceTimer: NodeJS.Timeout | null = null;
-
-// Detects if text is a partial clause (e.g. "are you familiar with", "what is the difference between")
-function isIncompleteFragment(text: string): boolean {
-  const t = text.trim().toLowerCase();
-  if (t.length < 16) return true;
-  const trailingIncomplete = /\b(with|and|or|about|for|to|in|on|of|by|is|are|was|were|what|how|why|which|tell|can|could|between|like|than|such as|familiar with)$/i;
-  if (trailingIncomplete.test(t)) return true;
-  const words = t.split(/\s+/);
-  if (words.length < 5) return true;
-  return false;
-}
+let accumulatedSentence = '';
+let lastSpeechTime = 0;
+let finalizeTimer: NodeJS.Timeout | null = null;
 
 // Merging helper to combine sentence chunks seamlessly without duplicate words
 function mergeSentenceChunks(existing: string, incoming: string): string {
@@ -119,10 +112,6 @@ function mergeSentenceChunks(existing: string, incoming: string): string {
 
   return `${prev} ${next}`;
 }
-
-let accumulatedSentence = '';
-let lastSpeechTime = 0;
-let finalizeTimer: NodeJS.Timeout | null = null;
 
 export const useAppStore = create<AppStore>((set, get) => ({
   config: DEFAULT_CONFIG,
@@ -219,63 +208,58 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   /**
-   * Safe Text-Level Sentence Merging with Slow-Speaker Pause Tolerance & Technical Term Correction
+   * Realtime Speech Handler: Interim Streaming (<300ms) + VAD Full Sentence Merging
    */
-  handleIncomingTranscript: (text: string, speaker: SpeakerType) => {
+  handleIncomingTranscript: (text: string, speaker: SpeakerType, isFinal: boolean = true) => {
     let trimmed = text.trim();
-    if (!trimmed || trimmed.length < 4) return;
+    if (!trimmed) return;
 
-    // Filter out meta developer / prompt bleed speech
-    const lower = trimmed.toLowerCase();
-    if (lower.includes('hallucination') || lower.includes('ultra prompt') || lower.includes('prompt logic')) {
-      console.log('[Transcript Filter] Discarded meta-prompt speech:', trimmed);
-      return;
-    }
-    
-    // Strict Hallucination & Noise Filter
-    const isNoise = /^(thank you|thanks|thanks for watching|subscribe|yeah|yes|ok|okay|alright|right|you know|hello|hi|bye|uh|um|hm|mhm)(\.|\!|\,)?$/i.test(trimmed);
-    if (isNoise) {
-      console.log('[Transcript Filter] Discarded filler/noise:', trimmed);
+    // 1. If Interim (WebSpeech API streaming)
+    if (!isFinal) {
+      const correctedInterim = correctTerms(trimmed);
+      set({
+        liveTranscription: correctedInterim,
+        activeSpeaker: speaker,
+        isBuildingTranscript: true,
+      });
       return;
     }
 
-    // Auto-correct misheard technical phonetic terms
-    trimmed = correctTechnicalTerms(trimmed);
+    // 2. If Final (Groq Whisper Sentence)
+    if (isHallucination(trimmed)) {
+      console.log('[Transcript Filter] Discarded hallucination/noise:', trimmed);
+      return;
+    }
 
+    trimmed = correctTerms(trimmed);
     const now = Date.now();
     const gap = now - lastSpeechTime;
 
-    // If accumulated sentence ended incompletely, allow up to 6.5 seconds of pause between words
-    const maxGap = isIncompleteFragment(accumulatedSentence) ? 6500 : 4500;
-
-    if (gap < maxGap && accumulatedSentence.length > 0) {
-      // Continuation of the current question -> merge seamlessly
-      accumulatedSentence = correctTechnicalTerms(mergeSentenceChunks(accumulatedSentence, trimmed));
+    if (gap < 2500 && accumulatedSentence.length > 0) {
+      // Continuation of current question
+      accumulatedSentence = correctTerms(mergeSentenceChunks(accumulatedSentence, trimmed));
     } else {
-      // New distinct question started
+      // New question started
       accumulatedSentence = trimmed;
     }
 
     lastSpeechTime = now;
-    const currentBuilding = accumulatedSentence;
+    const currentQuestion = accumulatedSentence;
 
-    console.log('FULL QUESTION BUILDING:', currentBuilding);
+    console.log('FULL QUESTION BUILDING:', currentQuestion);
 
     set({
-      liveTranscription: currentBuilding,
+      liveTranscription: currentQuestion,
       activeSpeaker: speaker,
-      isBuildingTranscript: true,
+      isBuildingTranscript: false,
     });
 
-    // Debounce finalization:
-    // If sentence appears incomplete, wait 3.5s for next words; if complete, wait 2.2s
+    // Debounce finalization: 600ms silence = ready to answer
     if (finalizeTimer) clearTimeout(finalizeTimer);
-    const debounceWait = isIncompleteFragment(currentBuilding) ? 3500 : 2200;
-
     finalizeTimer = setTimeout(() => {
       if (accumulatedSentence.length >= 8) {
-        const finalQuestion = correctTechnicalTerms(accumulatedSentence.trim());
-        console.log('FINALIZED:', finalQuestion);
+        const finalQuestion = correctTerms(accumulatedSentence.trim());
+        console.log('FINALIZED QUESTION:', finalQuestion);
 
         const { answerMode, recentQuestions } = get();
 
@@ -294,13 +278,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
           recentQuestions: updated,
         });
 
-        // In Auto Mode: trigger answer on finalization
+        // In Auto Mode: trigger answer immediately on finalization
         if (answerMode === 'auto') {
           get().generateAIAnswer(finalQuestion, speaker);
         }
       }
       finalizeTimer = null;
-    }, debounceWait);
+    }, 600);
   },
 
   triggerManualAnswer: async (questionOverride?: string) => {
@@ -350,10 +334,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       let succeeded = false;
 
-      // 1. Try Groq (Ultra-fast LLaMA 3.3 / 3.1)
+      // 1. Try Groq (Ultra-fast LLaMA 3.1 8B / 3.3 70B)
       if (config.groqApiKey) {
         try {
-          const modelName = 'llama-3.3-70b-versatile';
+          const modelName = 'llama-3.1-8b-instant';
           await GroqService.streamChat(config.groqApiKey, modelName, systemPrompt, userPrompt, onChunk);
           succeeded = true;
         } catch (groqErr) {
@@ -373,7 +357,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
       if (!succeeded) {
         set({
-          currentAnswer: '⚠️ Please verify your free Groq API key in Settings to receive real-time answers.',
+          currentAnswer: '⚠️ Please configure your free Groq or Gemini API key in Settings to receive real-time answers.',
           overlayState: 'idle',
         });
         return;
