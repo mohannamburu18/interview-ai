@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Cpu, Shield, Zap, Terminal, Layers, Radio, Sparkles, Code2, Headphones, Lock, CheckCircle2, ArrowRight } from "lucide-react";
+import { Cpu, Shield, Zap, Layers, Sparkles, Code2, Headphones, Lock, CheckCircle2, ArrowRight, ShieldCheck, Activity, Terminal } from "lucide-react";
 
 interface PipelineStage {
   id: string;
@@ -13,7 +13,9 @@ interface PipelineStage {
   headline: string;
   description: string;
   metrics: Array<{ label: string; value: string }>;
-  codeSnippet: string;
+  capabilities: string[];
+  workflow: string[];
+  guarantee: string;
 }
 
 const PIPELINE_STAGES: PipelineStage[] = [
@@ -24,21 +26,26 @@ const PIPELINE_STAGES: PipelineStage[] = [
     tag: "Hardware Level",
     icon: Headphones,
     color: "orange",
-    headline: "System & Microphone Separation at 48kHz",
-    description: "Captures interviewer speaker audio via OS loopback while isolating candidate microphone audio. Hardware RMS amplitude analysis guarantees zero processing during silence.",
+    headline: "System & Microphone Separation at 48,000 Hz",
+    description: "Captures interviewer speaker audio via low-level OS loopback while isolating candidate microphone audio. Hardware RMS amplitude analysis guarantees zero processing during silence.",
     metrics: [
       { label: "Sample Rate", value: "48,000 Hz" },
       { label: "Noise Floor Gate", value: "> 0.022 RMS" },
       { label: "Channel Latency", value: "< 12 ms" },
     ],
-    codeSnippet: `// Hardware-Level Audio Energy & VAD Gate
-const rms = calculateAudioRMS(audioFrame);
-if (rms < NOISE_FLOOR_THRESHOLD) {
-  return; // Drop ambient fan noise & silence
-}
-if (continuousVoiceMs >= 1400) {
-  routeToWhisperEngine(audioSlice);
-}`,
+    capabilities: [
+      "Hardware-level loopback isolates Zoom, Teams & Google Meet audio from background noise",
+      "Real-time RMS energy analysis drops keyboard typing, chair creaks & ambient fan hums",
+      "Dedicated multi-channel audio stream routing prevents candidate filler words from becoming questions",
+      "Dynamic automatic gain control (AGC) normalizes soft interviewer voices for 100% clarity",
+    ],
+    workflow: [
+      "OS Loopback Audio Capture (48kHz Studio Quality)",
+      "RMS Loudness Measurement & Ambient Noise Filter (< 0.022 RMS dropped)",
+      "Continuous Speech Duration Gate (Requires >= 1.4s real speech)",
+      "Direct Channel Routing to Whisper Transcription Engine",
+    ],
+    guarantee: "100% Clean Screen during silence — zero ghost transcripts sent to AI.",
   },
   {
     id: "transcribe",
@@ -47,19 +54,26 @@ if (continuousVoiceMs >= 1400) {
     tag: "STT Engine",
     icon: Zap,
     color: "purple",
-    headline: "Sub-50ms Speech-to-Text with Context Biasing",
-    description: "Groq LPU hardware runs Whisper Large v3 at temperature 0.0, disambiguating domain jargon (TrustSec, SGT, CRUD, OOPS) with zero hallucination.",
+    headline: "Sub-50ms Speech-to-Text with Domain Biasing",
+    description: "Groq LPU hardware runs Whisper Large v3 at deterministic temperature 0.0, disambiguating complex domain terms (TrustSec, SGT, CRUD, OOPS) with zero creative invention.",
     metrics: [
       { label: "Inference Time", value: "48 ms" },
       { label: "Temperature", value: "0.0 (Deterministic)" },
       { label: "Model", value: "Whisper Large v3" },
     ],
-    codeSnippet: `const response = await groq.audio.transcriptions.create({
-  file: audioFile,
-  model: "whisper-large-v3",
-  temperature: 0, // Maximum deterministic accuracy
-  response_format: "json",
-});`,
+    capabilities: [
+      "Ultra-fast transcription running directly on specialized Groq Language Processing Units",
+      "Zero prompt echoing vulnerability: eliminates phantom URL and keyword loop hallucinations",
+      "Comprehensive technical dictionary auto-corrects misheard acronyms silently before display",
+      "Continuous fragment merging joins multi-sentence interview questions without losing final words",
+    ],
+    workflow: [
+      "Deterministic Audio Chunk Ingestion (Temperature: 0.0)",
+      "Technical Domain Disambiguation (Cisco TrustSec, CRUD, OOPS)",
+      "6-Layer Post-Transcription Sanity Filter (Rejects links, spam & loops)",
+      "Zero-Loss Question Buffer Aggregation & Live Diarization",
+    ],
+    guarantee: "Sub-50ms transcription latency with 100% domain jargon accuracy.",
   },
   {
     id: "reasoning",
@@ -75,12 +89,19 @@ if (continuousVoiceMs >= 1400) {
       { label: "Format", value: "Parakeet Structured" },
       { label: "SAY THIS Target", value: "90 - 130 words" },
     ],
-    codeSnippet: `// High-impact conversational verbal response synthesis
-const systemPrompt = PromptEngine.buildSystemPrompt({
-  resumeContext: candidateProfile,
-  targetRole: "Senior Java & Spring Boot Engineer",
-  structure: ["DEFINITION", "KEY_OPS", "CODE_DUAL", "SAY_THIS"]
-});`,
+    capabilities: [
+      "Generates scannable, high-impact bullet points: Core Syntax, Key Operations & Real World",
+      "Translates textbook theory into humanized 5-sentence conversational scripts ready to speak",
+      "Deeply grounds answers in your actual resume achievements, metrics, and Java 17 / Spring Boot stack",
+      "Automatic question classification: dynamically adjusts between Algorithm, Theory, System Design & STAR",
+    ],
+    workflow: [
+      "Question Intent Classification (Coding vs Theory vs Behavioral)",
+      "Resume Grounding & Metric Injection (MTTD Reduction from Hours to < 10 mins)",
+      "Structured Technical Bullet Synthesis (SQL Mapping, Operations, Complexity)",
+      "Conversational 'SAY THIS' Script Generation in Plain Everyday English",
+    ],
+    guarantee: "Answers sound like a confident engineer talking face-to-face, never like an AI.",
   },
   {
     id: "cache",
@@ -93,17 +114,22 @@ const systemPrompt = PromptEngine.buildSystemPrompt({
     description: "Pre-compiles both Python and Java algorithms in the initial generation payload. Tab switches occur entirely in frontend RAM with zero secondary network calls.",
     metrics: [
       { label: "Switch Latency", value: "0.01 seconds" },
-      { label: "Languages", value: "Python, Java, C++, SQL" },
+      { label: "Languages", value: "Python, Java, Go, Rust, SQL" },
       { label: "Network Calls on Click", value: "0 (Pure RAM)" },
     ],
-    codeSnippet: `// In-Memory Multi-Language Code Registry
-const codeMap = {
-  python: "def is_prime(n): ...",
-  java: "public class PrimeCheck { ... }",
-  cpp: "bool isPrime(int n) { ... }"
-};
-// 0ms instant tab swap
-const activeSnippet = codeMap[selectedTab];`,
+    capabilities: [
+      "Dual-language pre-generation: returns both Python and Java implementations in one single API call",
+      "Instant 0.01-second tab switching between languages with zero loading spinners or waiting",
+      "Language auto-detection displays the requested language tab by default while keeping alternates ready",
+      "Single-click code copying automatically copies the active tab's syntax to your clipboard",
+    ],
+    workflow: [
+      "Single-Pass Multi-Language Code Generation from LLM",
+      "Frontend In-Memory Extraction & State Indexing (Python, Java, C++, SQL)",
+      "Zero-Network Instant DOM Tab Switching on User Click",
+      "Optimized Syntax Highlighting & Clipboard Dispatch",
+    ],
+    guarantee: "Instant 0.01s language toggle with zero API latency and zero secondary costs.",
   },
   {
     id: "overlay",
@@ -119,10 +145,19 @@ const activeSnippet = codeMap[selectedTab];`,
       { label: "Screen Capture Mode", value: "WDA_EXCLUDEFROMCAPTURE" },
       { label: "Memory Footprint", value: "< 45 MB" },
     ],
-    codeSnippet: `// Native OS Window Sharing Protection
-mainWindow.setContentProtection(true);
-mainWindow.setAlwaysOnTop(true, 'screen-saver');
-mainWindow.setVisibleOnAllWorkspaces(true);`,
+    capabilities: [
+      "Native OS window protection flags exclude the overlay from desktop and window capture encoders",
+      "Always-on-top transparent HUD stays positioned over your interviewer's video call window",
+      "Global shortcut control (Ctrl+Enter to trigger answers, Ctrl+\\ to toggle overlay visibility)",
+      "Zero telemetry and zero data retention: all local transcripts self-purge on session completion",
+    ],
+    workflow: [
+      "OS Window Affiliation Flag Activation (setContentProtection: true)",
+      "Floating HUD Layer Composition over Video Conference Window",
+      "Global Hotkey Listening (Ctrl+Enter for Manual Mode Trigger)",
+      "Secure Direct BYOK API Transport with Zero Middleman Servers",
+    ],
+    guarantee: "100% Undetectable by Zoom, Teams, and Google Meet video capture.",
   },
 ];
 
@@ -146,7 +181,7 @@ export function ArchitectureSection() {
             Engineered for Sub-Second Precision
           </h2>
           <p className="mt-4 text-base sm:text-lg text-neutral-400">
-            A low-latency, multi-stage processing pipeline built for ultra-fast response delivery and complete privacy.
+            A low-latency, multi-stage processing pipeline built for ultra-fast response delivery, zero hallucinations, and complete privacy.
           </p>
         </div>
 
@@ -200,9 +235,9 @@ export function ArchitectureSection() {
           })}
         </div>
 
-        {/* Interactive Stage Details Card */}
+        {/* Technical Matter Showcase Card (No Code Blocks) */}
         <div className="max-w-5xl mx-auto rounded-2xl bg-[#0e0e14] border border-white/10 p-6 sm:p-8 shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Info Column */}
             <div className="lg:col-span-6 space-y-5">
               <div className="flex items-center gap-2">
@@ -213,7 +248,7 @@ export function ArchitectureSection() {
                       : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
                   }`}
                 >
-                  Step {activeStage.step} • {activeStage.tag}
+                  Stage {activeStage.step} • {activeStage.tag}
                 </span>
               </div>
 
@@ -242,27 +277,78 @@ export function ArchitectureSection() {
                   </div>
                 ))}
               </div>
+
+              {/* Engineering Guarantee Banner */}
+              <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-white/10 flex items-start gap-2.5">
+                <ShieldCheck
+                  className={`w-4 h-4 mt-0.5 shrink-0 ${
+                    activeStage.color === "orange" ? "text-brand-400" : "text-purple-400"
+                  }`}
+                />
+                <div className="text-xs text-neutral-200 font-medium leading-relaxed">
+                  <strong className="text-white font-semibold">Engineering Guarantee: </strong>
+                  {activeStage.guarantee}
+                </div>
+              </div>
             </div>
 
-            {/* Right Interactive Code / Terminal Column */}
-            <div className="lg:col-span-6">
-              <div className="rounded-xl bg-[#050508] border border-white/10 overflow-hidden font-mono shadow-xl">
-                <div className="bg-[#12121a] px-4 py-2.5 border-b border-white/5 flex items-center justify-between text-xs text-neutral-400">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                    </div>
-                    <span className="text-[11px] text-neutral-300 ml-1">
-                      {activeStage.id}.engine.ts
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-neutral-500">Execution Kernel</span>
+            {/* Right Technical Matter & Process Flow Column (Replaces Raw Code) */}
+            <div className="lg:col-span-6 space-y-4">
+              {/* Technical Capabilities */}
+              <div className="p-5 rounded-xl bg-[#08080c] border border-white/5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-white">
+                  <Activity
+                    className={`w-4 h-4 ${
+                      activeStage.color === "orange" ? "text-brand-400" : "text-purple-400"
+                    }`}
+                  />
+                  <span>Core Processing Capabilities</span>
                 </div>
-                <pre className="p-4 text-xs text-neutral-200 leading-relaxed overflow-x-auto selection:bg-neutral-800 font-mono">
-                  {activeStage.codeSnippet}
-                </pre>
+                <div className="space-y-2.5">
+                  {activeStage.capabilities.map((cap, cIdx) => (
+                    <div key={cIdx} className="flex items-start gap-2 text-xs text-neutral-300 leading-snug">
+                      <span
+                        className={`font-bold mt-[-1px] ${
+                          activeStage.color === "orange" ? "text-brand-400" : "text-purple-400"
+                        }`}
+                      >
+                        •
+                      </span>
+                      <span>{cap}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step-by-Step Execution Workflow */}
+              <div className="p-5 rounded-xl bg-[#08080c] border border-white/5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-white">
+                  <Terminal
+                    className={`w-4 h-4 ${
+                      activeStage.color === "orange" ? "text-brand-400" : "text-purple-400"
+                    }`}
+                  />
+                  <span>Execution Process Flow</span>
+                </div>
+                <div className="space-y-2">
+                  {activeStage.workflow.map((stepItem, sIdx) => (
+                    <div
+                      key={sIdx}
+                      className="p-2 rounded-lg bg-black/40 border border-white/5 text-xs text-neutral-300 flex items-center gap-2.5 font-mono"
+                    >
+                      <span
+                        className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                          activeStage.color === "orange"
+                            ? "bg-brand-500/10 text-brand-400 border border-brand-500/20"
+                            : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                        }`}
+                      >
+                        0{sIdx + 1}
+                      </span>
+                      <span className="truncate">{stepItem}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -271,4 +357,3 @@ export function ArchitectureSection() {
     </section>
   );
 }
-
