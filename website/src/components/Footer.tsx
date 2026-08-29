@@ -6,12 +6,12 @@ import { GITHUB_REPO_URL } from "./Navbar";
 
 export function Footer() {
   return (
-    <footer className="bg-[#050505] border-t border-white/10 py-12 text-xs text-neutral-400">
+    <footer className="bg-[#050508] border-t border-white/10 py-12 text-xs text-neutral-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo & Info */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center text-[#00ff88]">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
@@ -22,23 +22,23 @@ export function Footer() {
 
           {/* Quick Nav Links */}
           <div className="flex flex-wrap items-center gap-6 font-medium text-neutral-300">
-            <a href="#features" className="hover:text-[#00ff88] transition-colors">
+            <a href="#features" className="hover:text-brand-400 transition-colors">
               Features
             </a>
-            <a href="#how-it-works" className="hover:text-[#00ff88] transition-colors">
-              How It Works
+            <a href="#architecture" className="hover:text-purple-400 transition-colors">
+              Architecture
             </a>
-            <a href="#showcase" className="hover:text-[#00ff88] transition-colors">
+            <a href="#showcase" className="hover:text-brand-400 transition-colors">
               Showcase
             </a>
-            <a href="#comparison" className="hover:text-[#00ff88] transition-colors">
+            <a href="#comparison" className="hover:text-purple-400 transition-colors">
               Comparison
             </a>
             <a
               href={GITHUB_REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[#00ff88] transition-colors flex items-center gap-1.5"
+              className="hover:text-brand-400 transition-colors flex items-center gap-1.5"
             >
               <Github className="w-3.5 h-3.5" />
               <span>GitHub</span>
@@ -53,9 +53,9 @@ export function Footer() {
                 href="https://github.com/mohannamburu18"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white hover:text-[#00ff88] font-semibold transition-colors"
+                className="text-white hover:text-brand-400 font-semibold transition-colors"
               >
-                Mohan Namburu
+                Mohan Krishna Namburu
               </a>{" "}
               — Open Source
             </p>

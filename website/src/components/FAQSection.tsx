@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { ChevronDown, HelpCircle, Sparkles } from "lucide-react";
 
 interface FAQItem {
   question: string;
@@ -13,46 +13,47 @@ export function FAQSection() {
 
   const faqs: FAQItem[] = [
     {
-      question: "Is Parakeet Free Unlimited really 100% free forever?",
+      question: "Is Interview AI really 100% free and open source?",
       answer:
-        "Yes. Unlike paid clones that charge $40-$150/month for limited tokens, Parakeet Free Unlimited connects directly to your personal Groq and Google Gemini free-tier developer keys. Groq provides 14,400 requests/day for free, and Google Gemini provides 1,500 free requests/day. You will never be asked for a credit card.",
+        "Yes! Interview AI is created by Mohan Krishna Namburu as a 100% open-source MIT licensed project. Unlike paid copilots that charge $49-$149/month, Interview AI uses your free-tier Groq API key (14,400 requests/day for free). You will never be asked for a subscription or credit card.",
     },
     {
-      question: "Is the desktop overlay truly undetectable on Zoom, Teams, and Google Meet?",
+      question: "How does the Zero Hallucination filter work during silence?",
       answer:
-        "Yes. Parakeet utilizes native OS window protection (`setContentProtection: true` on Windows and macOS). When you share your desktop or individual windows in Zoom, Microsoft Teams, Google Meet, or Slack, the overlay window is completely excluded from video encoding. Only you see it on your physical screen.",
+        "Interview AI features a 6-layer defense system. It measures real-time hardware RMS audio amplitude (dropping noise under 0.022), enforces a 1.4-second continuous speech duration gate, uses deterministic Whisper temperature (0.0), and filters out promotional URLs, phantom repetition loops, and filler acknowledgments.",
     },
     {
-      question: "How does the AI know my personal background and experience?",
+      question: "How does the Instant Code Switching work without API delays?",
       answer:
-        "During onboarding (or anytime in Settings), you can paste your resume and target job description. When the interviewer asks questions, our STAR prompt engine matches your actual achievements, metrics, and technologies rather than giving generic answers.",
+        "When a coding question is detected, Interview AI's prompt engine automatically generates both Python and Java (as well as Go, Rust, or SQL) solutions in a single initial API pass and indexes them in frontend RAM. When you click between language tabs, the code updates in 0.01 seconds without making any secondary network calls.",
     },
     {
-      question: "What languages does Parakeet support?",
+      question: "Is the overlay undetectable during Zoom, Teams, and Google Meet screen shares?",
       answer:
-        "Parakeet supports 59 global languages via Groq Whisper Large v3 and Web Speech recognition, including English, Spanish, Mandarin, French, German, Hindi, Japanese, Portuguese, Arabic, and more.",
+        "Yes. The Electron desktop application leverages OS window display protection (`setContentProtection(true)`). When you share your screen or application windows during a video call, the overlay is completely excluded from video encoding, remaining visible only on your physical monitor.",
     },
     {
-      question: "Is my interview audio stored in the cloud?",
+      question: "What is the difference between Manual Mode and Auto Mode?",
       answer:
-        "No. All transcription processing occurs over direct API calls between your machine and Groq/Gemini. Audio buffers are purged immediately from memory, and any local session notes automatically self-destruct after 24 hours.",
+        "In Manual Mode, Interview AI continuously accumulates everything the interviewer says without cutting off sentences, and only generates an answer when you press Ctrl+Enter. In Auto Mode, it automatically triggers an answer after detecting 3.5 seconds of silence.",
     },
     {
-      question: "How do I get the free Groq and Gemini API keys?",
+      question: "What programming languages and frameworks does Interview AI support?",
       answer:
-        "It takes 30 seconds: Visit console.groq.com/keys for a free Groq key, and aistudio.google.com/app/apikey for a free Google Gemini key. Paste them into the Parakeet settings panel.",
+        "Interview AI supports all modern languages and architectures, including Java, Spring Boot, Python, TypeScript, React, Go, Rust, C++, SQL, Docker, Kubernetes, AWS, System Design, and Cisco Networking concepts.",
     },
   ];
 
   return (
-    <section id="faq" className="py-24 bg-[#0d0d0d] border-t border-white/5 relative">
+    <section id="faq" className="py-24 bg-[#08080a] border-t border-white/5 relative">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-parakeet-500/10 border border-parakeet-500/30 text-parakeet-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            Got Questions?
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-mono font-semibold mb-4">
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Got Questions?</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white">
-            Frequently Asked <span className="text-parakeet-500">Questions</span>
+            Frequently Asked <span className="text-brand-400">Questions</span>
           </h2>
         </div>
 
@@ -62,7 +63,9 @@ export function FAQSection() {
             return (
               <div
                 key={idx}
-                className="rounded-xl bg-[#121212] border border-white/5 overflow-hidden transition-all duration-200"
+                className={`rounded-2xl bg-[#0e0e14] border transition-all duration-200 overflow-hidden ${
+                  isOpen ? "border-brand-500/30 shadow-glow-orange-sm" : "border-white/5 hover:border-white/20"
+                }`}
               >
                 <button
                   onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -72,14 +75,14 @@ export function FAQSection() {
                     {faq.question}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 text-parakeet-400 transition-transform duration-200 flex-shrink-0 ${
-                      isOpen ? "rotate-180" : ""
+                    className={`w-5 h-5 text-brand-400 transition-transform duration-200 flex-shrink-0 ${
+                      isOpen ? "rotate-180 text-purple-400" : ""
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-sm text-neutral-400 leading-relaxed border-t border-white/5">
+                  <div className="px-5 pb-5 pt-1 text-sm text-neutral-300 leading-relaxed border-t border-white/5 font-normal">
                     {faq.answer}
                   </div>
                 )}
@@ -91,4 +94,3 @@ export function FAQSection() {
     </section>
   );
 }
-
