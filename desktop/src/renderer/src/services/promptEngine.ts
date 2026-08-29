@@ -15,13 +15,28 @@ const BLACKLIST_EXACT = [
   'thanks for watching',
   'thank you for watching',
   'yeah',
+  'yes',
+  'no',
+  'okay',
+  'ok',
   'uh',
   'um',
+  'ah',
+  'oh',
+  'hmm',
+  'got it',
+  'sure',
+  'right',
+  'hello',
+  'hi',
+  'bye',
   'music',
   '[music]',
   'subscribe',
   'like and subscribe',
   '.',
+  '..',
+  '...',
   'a',
   'the',
   'you',
@@ -35,40 +50,69 @@ const BLACKLIST_CONTAINS = [
   'water cloud',
   'asking for water',
   'thank you',
+  'thanks for watching',
+  'thank you for watching',
   'subscribe',
   'like and subscribe',
   'ultra prompt',
   'prompt logic',
+  'for more information',
+  'visit us',
+  'visit our website',
+  'www.',
+  '.com',
+  '.org',
+  '.net',
+  '.io',
+  'http://',
+  'https://',
+  'web3',
+  'web2',
+  'nft',
+  'crypto',
+  'blockchain',
+  'in-app',
 ];
 
 /**
- * 5-Layer Ultra-Aggressive Zero Hallucination Filter
+ * 6-Layer Ultra-Aggressive Zero Hallucination Filter
  */
 export function isHallucination(text: string): boolean {
   if (!text) return true;
   const t = text.toLowerCase().trim();
 
-  // Layer 1: Too short or too few words (unless direct question)
-  if (t.length < 10 && !t.includes('?')) return true;
+  // Rule 1: Length check (must be at least 15 chars unless direct valid technical question)
+  if (t.length < 15) {
+    const isShortValidQuestion = (t.endsWith('?') || t.startsWith('what is') || t.startsWith('what are')) && t.length >= 10;
+    if (!isShortValidQuestion) return true;
+  }
+
+  // Rule 2: Minimum word count check (at least 3 words)
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 3 && !t.includes('?')) return true;
 
-  // Layer 2: Exact blacklist match
+  // Rule 3: Exact filler / noise blacklist
   if (BLACKLIST_EXACT.includes(t)) return true;
 
-  // Layer 3: Contains blacklist phrases
+  // Rule 4: Contains website URLs, promo phrases, or buzzword hallucinations
   if (BLACKLIST_CONTAINS.some((p) => t.includes(p))) return true;
 
-  // Layer 4: Filler only
-  if (/^(yeah|yes|no|okay|ok|thanks|thank you|uh|um|ah|oh|hmm)[\s\.\,]*$/i.test(t)) return true;
+  // Rule 5: Filler only regex
+  if (/^(yeah|yes|no|okay|ok|thanks|thank you|uh|um|ah|oh|hmm|got it|sure|right|hello|hi|bye)[\s\.\,\!\?]*$/i.test(t)) {
+    return true;
+  }
 
-  // Layer 5: Repetition hallucination (Whisper repeating same word)
+  // Rule 6: Buzzword list check (comma-separated list of words like "In-App, Web, Web3, Web2")
+  const commaCount = (t.match(/,/g) || []).length;
+  if (commaCount >= 2 && words.length <= 6) return true;
+
+  // Rule 7: Repetition loop check (Whisper repeating words)
   const uniqueWords = new Set(words);
   if (uniqueWords.size === 1 && words.length > 2) return true; // e.g. "hello hello hello"
   if (uniqueWords.size <= 2 && words.length > 4) return true;
 
-  // Layer 6: Punctuation/noise only
-  if (/^[\.\,\s\-\_\?\!]+$/.test(t)) return true;
+  // Rule 8: Non-text punctuation / whitespace only
+  if (/^[\.\,\s\-\_\?\!\:\;\/\\\|\@\#\$\%\^\&\*\(\)\+]+$/.test(t)) return true;
 
   return false;
 }
@@ -293,12 +337,9 @@ FORMATTING RULES:
 - CODE AUTO-DETECTION:
   If the question asks to write code, implement, or program:
   1. You MUST output CODE MODE.
-  2. MUST include **CODE SNIPPET:** with the EXACT detected language block (\`\`\`python or \`\`\`java).
+  2. MUST include **CODE SNIPPET:** containing BOTH the Python implementation in a \`\`\`python block AND the Java implementation in a \`\`\`java block so the user can switch tabs instantly.
   3. Include **EXPLANATION:** bullets.
   4. Include **SAY THIS:** (90+ words) walking through the code logic line by line.
-  5. Never output Java when Python was requested, or vice versa.
-- THEORY: If asking 'what is', 'explain', 'tell me about' -> Give theory with KEY OPERATIONS / SQL MAPPING and long SAY THIS.
-- Correct 'water cloud' to 'CRUD' and 'trust sick' to 'TrustSec' silently.
 
 CANDIDATE CONTEXT:
 - Candidate Name: ${candidateName || 'Candidate'}
@@ -312,7 +353,7 @@ TEMPLATES:
 
 1. FOR CODE QUESTIONS (e.g. "write a python code for finding a number is prime or not"):
 
-**PYTHON PRIME CHECK - CODE & LOGIC**
+**PRIME CHECK - CODE & LOGIC**
 
 **CORE SYNTAX:**
 • Check divisibility up to sqrt(n)
@@ -323,19 +364,35 @@ TEMPLATES:
 def is_prime(n):
     if n <= 1:
         return False
-    # Check divisors up to square root of n
     for i in range(2, int(n**0.5) + 1):
         if n % i == 0:
             return False
     return True
 
-# Example execution
+# Example test
 num = 17
-print(f"{num} is prime: {is_prime(num)}")  # Output: True
+print(f"{num} is prime: {is_prime(num)}")
+\`\`\`
+
+\`\`\`java
+public class PrimeCheck {
+    public static boolean isPrime(int n) {
+        if (n <= 1) return false;
+        for (int i = 2; i <= Math.sqrt(n); i++) {
+            if (n % i == 0) return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        int num = 17;
+        System.out.println(num + " is prime: " + isPrime(num));
+    }
+}
 \`\`\`
 
 **EXPLANATION:**
-• Numbers less than or equal to 1 are not prime
+• Numbers <= 1 are not prime
 • Checking up to sqrt(n) optimizes from O(n) to O(sqrt(n))
 
 **SAY THIS:**
@@ -394,14 +451,13 @@ RULES:
       const detectedLang = detectCodeLanguage(cleanQuestion);
       console.log(`[PromptBuilder] CODE DETECTED (${detectedLang}):`, cleanQuestion);
       return `Question: "${cleanQuestion}".
-YOU MUST OUTPUT IN CODE MODE FOR LANGUAGE: ${detectedLang.toUpperCase()}.
+YOU MUST OUTPUT IN CODE MODE.
 Include:
-1) **${detectedLang.toUpperCase()} [TOPIC] - CODE & LOGIC**
+1) **[TOPIC] - CODE & LOGIC**
 2) **CORE SYNTAX:**
-3) **CODE SNIPPET:** with \`\`\`${detectedLang} containing clean, runnable code.
+3) **CODE SNIPPET:** containing BOTH \`\`\`python and \`\`\`java runnable code blocks so the candidate can switch between tabs instantly.
 4) **EXPLANATION:**
-5) **SAY THIS:** (90+ words walking through the code in spoken words).
-DO NOT output a different programming language. DO NOT output text only.`;
+5) **SAY THIS:** (90+ words walking through the code in spoken words).`;
     }
 
     // 2. Check Introduction

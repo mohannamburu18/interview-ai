@@ -89,16 +89,16 @@ export const App: React.FC = () => {
       // Dual Audio Capture Engine (System Loopback + Microphone)
       dualAudioEngineRef.current = new DualAudioCaptureEngine(
         {
-          onTranscript: (text, speaker, isFinal) => {
+          onTranscript: (text: string, speaker: any, isFinal: boolean) => {
             handleIncomingTranscript(text, speaker, isFinal);
           },
-          onVolumeChange: (sysVol, micVol) => {
+          onVolumeChange: (sysVol: number, micVol: number) => {
             setVolumes(sysVol, micVol);
           },
-          onSpeechStart: (_speaker) => {
+          onSpeechStart: (_speaker: any) => {
             setOverlayState('listening');
           },
-          onSilenceDetected: (speaker, fullTranscript) => {
+          onSilenceDetected: (speaker: any, fullTranscript: string) => {
             handleIncomingTranscript(fullTranscript, speaker, true);
           },
         },

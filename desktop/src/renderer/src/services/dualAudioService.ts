@@ -6,61 +6,62 @@ export interface AudioCaptureCallbacks {
   onTranscript: (text: string, speaker: SpeakerType, isFinal: boolean) => void;
   onVolumeChange: (systemVolume: number, micVolume: number) => void;
   onSpeechStart: (speaker: SpeakerType) => void;
-  onSilenceDetected: (speaker: SpeakerType, fullTranscript: string) => void;
+  onSilenceDetected: (speaker: SpeakerType, lastTranscript: string) => void;
 }
 
-export { isHallucination as isValidTranscript };
-
-export class DualAudioCaptureEngine {
-  private isRunning: boolean = false;
+export class DualAudioEngine {
   private audioContext: AudioContext | null = null;
   private systemStream: MediaStream | null = null;
   private micStream: MediaStream | null = null;
   private combinedStream: MediaStream | null = null;
-  private mediaRecorder: MediaRecorder | null = null;
-  private audioChunks: Blob[] = [];
-
   private systemAnalyser: AnalyserNode | null = null;
   private micAnalyser: AnalyserNode | null = null;
-  private animationFrameId: number | null = null;
-  private sliceIntervalTimer: NodeJS.Timeout | null = null;
+  private mediaRecorder: MediaRecorder | null = null;
+  private isRunning: boolean = false;
+  private callbacks: AudioCaptureCallbacks;
+  private groqApiKey: string = '';
+  private language: string = 'en';
 
   private currentSpeaker: SpeakerType = 'interviewer';
+  private animationFrameId: number | null = null;
+  private audioChunks: Blob[] = [];
+  private sliceIntervalTimer: NodeJS.Timeout | null = null;
   private hasSpeechInCurrentSlice: boolean = false;
+  private continuousSpeechDurationMs: number = 0;
+  private lastFrameTimestamp: number = 0;
   private recentTranscriptContext: string = '';
 
-  constructor(
-    private callbacks: AudioCaptureCallbacks,
-    private groqApiKey: string,
-    private language: string = 'en'
-  ) {}
+  // Energy and duration thresholds for Layer 1 & Layer 2
+  private readonly LOUDNESS_THRESHOLD = 0.016; // 16/255: Filters fan noise & room background
+  private readonly MIN_SPEECH_DURATION_MS = 1200; // 1.2s: Filters keyboard clicks, mouse taps, coughs
+  private readonly MIN_BLOB_SIZE = 7000; // 7KB minimum audio blob size
 
-  public updateApiKey(key: string) {
+  constructor(callbacks: AudioCaptureCallbacks, groqApiKey?: string, language?: string) {
+    this.callbacks = callbacks;
+    if (groqApiKey) this.groqApiKey = groqApiKey;
+    if (language) this.language = language;
+  }
+
+  public setGroqApiKey(key: string) {
     this.groqApiKey = key;
   }
 
-  public updateLanguage(lang: string) {
+  public setLanguage(lang: string) {
     this.language = lang;
   }
 
-  /**
-   * Initializes audio capture from mic and system loopback
-   */
   public async start(): Promise<{ systemCaptured: boolean; micCaptured: boolean }> {
     this.isRunning = true;
-    let systemCaptured = false;
-    let micCaptured = false;
-
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    this.audioContext = new AudioContextClass();
-
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
 
     const destination = this.audioContext.createMediaStreamDestination();
+    let micCaptured = false;
+    let systemCaptured = false;
 
-    // 1. Capture Microphone
+    // 1. Microphone Capture (Candidate Audio)
     try {
       this.micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -73,7 +74,6 @@ export class DualAudioCaptureEngine {
 
       if (this.micStream && this.micStream.getAudioTracks().length > 0) {
         micCaptured = true;
-        console.log('Mic Stream Tracks:', this.micStream.getAudioTracks().length);
         const micSource = this.audioContext.createMediaStreamSource(this.micStream);
         this.micAnalyser = this.audioContext.createAnalyser();
         this.micAnalyser.fftSize = 256;
@@ -86,17 +86,14 @@ export class DualAudioCaptureEngine {
         }
       }
     } catch (err) {
-      console.warn('[AudioEngine] Mic capture warning:', err);
+      console.warn('[AudioEngine] Mic capture error:', err);
     }
 
-    // 2. Capture System Loopback (Interviewer Audio)
+    // 2. System Audio Loopback Capture (Interviewer Audio)
     try {
-      let systemSourceId: string | null = null;
       if (window.parakeetAPI?.audio?.getSystemSourceId) {
-        systemSourceId = await window.parakeetAPI.audio.getSystemSourceId();
-      }
+        const systemSourceId = (await window.parakeetAPI.audio.getSystemSourceId()) || 'entire-screen';
 
-      if (systemSourceId) {
         this.systemStream = await (navigator.mediaDevices as any).getUserMedia({
           audio: {
             mandatory: {
@@ -115,7 +112,6 @@ export class DualAudioCaptureEngine {
 
       if (this.systemStream && this.systemStream.getAudioTracks().length > 0) {
         systemCaptured = true;
-        console.log('System Audio Tracks:', this.systemStream.getAudioTracks().length);
         const sysSource = this.audioContext.createMediaStreamSource(this.systemStream);
         this.systemAnalyser = this.audioContext.createAnalyser();
         this.systemAnalyser.fftSize = 256;
@@ -169,14 +165,17 @@ export class DualAudioCaptureEngine {
         };
 
         this.mediaRecorder.onstop = async () => {
+          // Layer 1 & 2: Only send if real continuous speech was detected
           if (this.audioChunks.length > 0 && this.hasSpeechInCurrentSlice) {
             const blob = new Blob(this.audioChunks, { type: mimeType });
             this.audioChunks = [];
             this.hasSpeechInCurrentSlice = false;
+            this.continuousSpeechDurationMs = 0;
 
-            console.log('BLOB SIZE:', blob.size);
+            console.log('[AudioEngine] Valid Speech Blob Size:', blob.size);
 
-            if (blob.size >= 5000 && this.groqApiKey) {
+            // Layer 1 Gate: Audio file size filter
+            if (blob.size >= this.MIN_BLOB_SIZE && this.groqApiKey) {
               try {
                 const text = await GroqService.transcribeAudio(
                   blob,
@@ -185,8 +184,9 @@ export class DualAudioCaptureEngine {
                   this.recentTranscriptContext
                 );
 
+                // Layer 3: Strict post-transcription filter
                 if (text && !isHallucination(text)) {
-                  // Gate 3: Filter candidate self-filler acknowledgments
+                  // Gate 4: Filter candidate self-filler acknowledgments
                   if (this.currentSpeaker === 'user' && isCandidateVoice(text)) {
                     console.log('[AudioEngine] Discarded candidate filler voice:', text);
                     return;
@@ -199,11 +199,18 @@ export class DualAudioCaptureEngine {
                   console.log('TRANSCRIPT:', cleaned, `[Speaker: ${speaker}]`);
                   this.callbacks.onTranscript(cleaned, speaker, true);
                   this.callbacks.onSilenceDetected(speaker, cleaned);
+                } else if (text) {
+                  console.log('[AudioEngine] Discarded hallucination/noise:', text);
                 }
               } catch (err) {
-                console.error('Transcription error:', err);
+                console.error('[AudioEngine] Transcription error:', err);
               }
             }
+          } else {
+            // Silence or blip ignored
+            this.audioChunks = [];
+            this.hasSpeechInCurrentSlice = false;
+            this.continuousSpeechDurationMs = 0;
           }
         };
 
@@ -218,11 +225,17 @@ export class DualAudioCaptureEngine {
   }
 
   /**
-   * Real-time Volume & Speaker Diarization Monitoring
+   * Real-time Volume & Speaker Diarization Monitoring with Duration Gating (Layer 1 & 2)
    */
   private startVolumeMonitoring() {
+    this.lastFrameTimestamp = performance.now();
+
     const checkVolume = () => {
       if (!this.isRunning) return;
+
+      const now = performance.now();
+      const deltaMs = now - this.lastFrameTimestamp;
+      this.lastFrameTimestamp = now;
 
       let sysVol = 0;
       let micVol = 0;
@@ -241,17 +254,26 @@ export class DualAudioCaptureEngine {
         micVol = micAvg / 255;
       }
 
-      // Detect speech activity (Threshold = 8 / 255 ~ 0.008)
-      if (sysVol > 0.008 || micVol > 0.008) {
-        this.hasSpeechInCurrentSlice = true;
+      const maxVol = Math.max(sysVol, micVol);
 
-        if (sysVol > micVol + 0.01) {
-          this.currentSpeaker = 'interviewer';
-          this.callbacks.onSpeechStart('interviewer');
-        } else if (micVol > 0.008) {
-          this.currentSpeaker = 'user';
-          this.callbacks.onSpeechStart('user');
+      // Layer 1 & 2: Check loudness & track continuous duration
+      if (maxVol > this.LOUDNESS_THRESHOLD) {
+        this.continuousSpeechDurationMs += deltaMs;
+
+        if (this.continuousSpeechDurationMs >= this.MIN_SPEECH_DURATION_MS) {
+          this.hasSpeechInCurrentSlice = true;
+
+          if (sysVol > micVol + 0.008) {
+            this.currentSpeaker = 'interviewer';
+            this.callbacks.onSpeechStart('interviewer');
+          } else if (micVol > this.LOUDNESS_THRESHOLD) {
+            this.currentSpeaker = 'user';
+            this.callbacks.onSpeechStart('user');
+          }
         }
+      } else {
+        // Below noise floor, decay speech duration
+        this.continuousSpeechDurationMs = Math.max(0, this.continuousSpeechDurationMs - deltaMs * 2);
       }
 
       this.callbacks.onVolumeChange(sysVol, micVol);
@@ -312,3 +334,5 @@ export class DualAudioCaptureEngine {
     }
   }
 }
+
+export { DualAudioEngine as DualAudioCaptureEngine };

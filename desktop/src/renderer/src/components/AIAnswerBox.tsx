@@ -1,11 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Copy, Check, Sparkles, MessageSquare, Code2, RefreshCw } from 'lucide-react';
+import { detectCodeLanguage } from '../services/promptEngine';
+
+interface MultiLangCodeBlockProps {
+  codeMap: Record<string, string>;
+  initialLang: string;
+}
+
+const MultiLangCodeBlock: React.FC<MultiLangCodeBlockProps> = ({ codeMap, initialLang }) => {
+  const availableLangs = useMemo(() => Object.keys(codeMap), [codeMap]);
+  const [selectedLang, setSelectedLang] = useState<string>(() => {
+    if (codeMap[initialLang]) return initialLang;
+    if (codeMap['python']) return 'python';
+    if (codeMap['java']) return 'java';
+    return availableLangs[0] || 'python';
+  });
+  const [copied, setCopied] = useState(false);
+
+  const activeCode = codeMap[selectedLang] || Object.values(codeMap)[0] || '';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(activeCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="rounded-lg bg-[#141414] border border-[#00ff88]/20 overflow-hidden font-mono shadow-md my-2.5">
+      <div className="bg-[#1a1a1a] px-3 py-1.5 border-b border-white/5 flex items-center justify-between text-[10px] text-neutral-400">
+        {/* Instant Multi-Language Switcher Tabs */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-[#00ff88] font-bold uppercase tracking-wider mr-1">
+            <Code2 className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-1 bg-black/50 p-0.5 rounded border border-white/10">
+            {availableLangs.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setSelectedLang(lang)}
+                className={`px-2.5 py-0.5 rounded text-[10px] uppercase font-bold transition-all ${
+                  selectedLang === lang
+                    ? 'bg-[#00ff88] text-black shadow-glow-green-sm'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                }`}
+                title={`Switch instantly to ${lang.toUpperCase()}`}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Copy Code Button */}
+        <button
+          onClick={handleCopy}
+          className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-[#00ff88] flex items-center gap-1 transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check className="w-2.5 h-2.5 text-[#00ff88]" />
+              <span className="text-[#00ff88]">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-2.5 h-2.5" />
+              <span>Copy Code</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Instant Rendered Code Content */}
+      <pre className="p-3 text-[11px] text-[#00ff88] leading-relaxed overflow-x-auto selection:bg-neutral-800">
+        {activeCode}
+      </pre>
+    </div>
+  );
+};
 
 export const AIAnswerBox: React.FC = () => {
-  const { currentAnswer, activeSpeaker, overlayState, isCodeMode } = useAppStore();
+  const { currentAnswer, activeSpeaker, overlayState, isCodeMode, liveTranscription } = useAppStore();
   const [copied, setCopied] = useState(false);
-  const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
+
+  const initialCodeLang = useMemo(() => {
+    return detectCodeLanguage(liveTranscription || '');
+  }, [liveTranscription]);
 
   const handleCopy = () => {
     if (!currentAnswer) return;
@@ -14,168 +94,101 @@ export const AIAnswerBox: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCopyCode = (code: string, idx: number) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCodeIdx(idx);
-    setTimeout(() => setCopiedCodeIdx(null), 2000);
-  };
-
   /**
-   * Parakeet visual markdown & code block renderer
+   * Parakeet visual markdown & multi-language code renderer
    */
   const renderFormattedAnswer = (rawText: string) => {
     if (!rawText) return null;
 
-    // Check for code blocks
+    // 1. Extract all code blocks into a multi-language map
     const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]*?)```/g;
-    const sections: Array<{ type: 'code' | 'markdown'; content: string; language?: string }> = [];
-    let lastIndex = 0;
+    const codeMap: Record<string, string> = {};
+    let firstCodeIndex = -1;
     let match;
 
     while ((match = codeBlockRegex.exec(rawText)) !== null) {
-      if (match.index > lastIndex) {
-        sections.push({
-          type: 'markdown',
-          content: rawText.slice(lastIndex, match.index),
-        });
-      }
-      sections.push({
-        type: 'code',
-        language: match[1] || 'code',
-        content: match[2].trim(),
-      });
-      lastIndex = match.index + match[0].length;
+      if (firstCodeIndex === -1) firstCodeIndex = match.index;
+      const lang = (match[1] || 'code').toLowerCase().trim() || 'code';
+      codeMap[lang] = match[2].trim();
     }
 
-    if (lastIndex < rawText.length) {
-      sections.push({
-        type: 'markdown',
-        content: rawText.slice(lastIndex),
-      });
-    }
+    // Strip all code blocks from the markdown stream
+    const textWithoutCode = rawText.replace(/```[a-zA-Z]*\n[\s\S]*?```/g, '___CODE_BLOCK_PLACEHOLDER___');
+    const parts = textWithoutCode.split('___CODE_BLOCK_PLACEHOLDER___');
 
-    return (
-      <div className="space-y-2.5 text-xs font-sans">
-        {sections.map((sec, secIdx) => {
-          if (sec.type === 'code') {
-            const currentLang = (sec.language || 'python').toLowerCase();
-            return (
-              <div key={secIdx} className="rounded-lg bg-[#141414] border border-[#00ff88]/20 overflow-hidden font-mono shadow-md my-2">
-                <div className="bg-[#1a1a1a] px-3 py-1.5 border-b border-white/5 flex items-center justify-between text-[10px] text-neutral-400">
-                  {/* Language Switcher Tabs */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-[#00ff88] font-bold uppercase tracking-wider mr-1">
-                      <Code2 className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded border border-white/5">
-                      {['python', 'java', 'sql'].map((lang) => (
-                        <button
-                          key={lang}
-                          onClick={() => {
-                            const { liveTranscription, generateAIAnswer, activeSpeaker } = useAppStore.getState();
-                            const prompt = `Convert the code in this question to ${lang.toUpperCase()}: "${liveTranscription}"`;
-                            generateAIAnswer(prompt, activeSpeaker || 'interviewer');
-                          }}
-                          className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-all ${
-                            currentLang.includes(lang)
-                              ? 'bg-[#00ff88] text-black shadow-glow-green-sm'
-                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                          }`}
-                        >
-                          {lang}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+    const renderMarkdownLines = (text: string, keyPrefix: string) => {
+      const lines = text.split('\n');
+      return lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={`${keyPrefix}-${idx}`} className="h-1" />;
 
-                  <button
-                    onClick={() => handleCopyCode(sec.content, secIdx)}
-                    className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-[#00ff88] flex items-center gap-1 transition-colors"
-                  >
-                    {copiedCodeIdx === secIdx ? (
-                      <>
-                        <Check className="w-2.5 h-2.5 text-[#00ff88]" />
-                        <span className="text-[#00ff88]">Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-2.5 h-2.5" />
-                        <span>Copy Code</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <pre className="p-3 text-[11px] text-[#00ff88] leading-relaxed overflow-x-auto selection:bg-neutral-800">
-                  {sec.content}
-                </pre>
-              </div>
-            );
-          }
-
-          // Markdown lines
-          const lines = sec.content.split('\n');
-
+        // "Say This" Quote Script Block
+        if (trimmed.startsWith('>') || trimmed.startsWith('&gt;')) {
+          const scriptText = trimmed.replace(/^(&gt;|>)\s*/, '');
           return (
-            <div key={secIdx} className="space-y-1.5">
-              {lines.map((line, idx) => {
-                const trimmed = line.trim();
-                if (!trimmed) return <div key={idx} className="h-1" />;
-
-                // 1. "Say This" Quote Script Block
-                if (trimmed.startsWith('>') || trimmed.startsWith('&gt;')) {
-                  const scriptText = trimmed.replace(/^(&gt;|>)\s*/, '');
-                  return (
-                    <div
-                      key={idx}
-                      className="mt-2.5 p-3 rounded-lg bg-[#00ff88]/5 border border-[#00ff88]/30 text-[#00ff88] font-sans leading-relaxed shadow-glow-green-sm flex gap-2.5"
-                    >
-                      <MessageSquare className="w-4 h-4 text-[#00ff88] shrink-0 mt-0.5" />
-                      <div className="italic text-xs text-neutral-100 font-medium">
-                        {scriptText}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // 2. Bullet point (• or - or *)
-                if (trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                  const bulletContent = trimmed.replace(/^(•|-|\*)\s*/, '');
-                  return (
-                    <div key={idx} className="flex items-start gap-2 pl-2 text-neutral-200 leading-snug">
-                      <span className="text-[#00ff88] font-bold mt-[-1px]">•</span>
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: bulletContent.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>'),
-                        }}
-                      />
-                    </div>
-                  );
-                }
-
-                // 3. Section Header or Bold Metadata Line
-                if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
-                  const headerText = trimmed.replace(/\*\*/g, '');
-                  return (
-                    <div key={idx} className="text-[#00ff88] font-bold text-xs uppercase tracking-wide pt-1.5">
-                      {headerText}
-                    </div>
-                  );
-                }
-
-                // 4. Standard line with bold tags
-                return (
-                  <div
-                    key={idx}
-                    className="text-neutral-300 leading-snug"
-                    dangerouslySetInnerHTML={{
-                      __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>'),
-                    }}
-                  />
-                );
-              })}
+            <div
+              key={`${keyPrefix}-${idx}`}
+              className="mt-2.5 p-3 rounded-lg bg-[#00ff88]/5 border border-[#00ff88]/30 text-[#00ff88] font-sans leading-relaxed shadow-glow-green-sm flex gap-2.5"
+            >
+              <MessageSquare className="w-4 h-4 text-[#00ff88] shrink-0 mt-0.5" />
+              <div className="italic text-xs text-neutral-100 font-medium">
+                {scriptText}
+              </div>
             </div>
           );
-        })}
+        }
+
+        // Bullet point (• or - or *)
+        if (trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const bulletContent = trimmed.replace(/^(•|-|\*)\s*/, '');
+          return (
+            <div key={`${keyPrefix}-${idx}`} className="flex items-start gap-2 pl-2 text-neutral-200 leading-snug">
+              <span className="text-[#00ff88] font-bold mt-[-1px]">•</span>
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: bulletContent.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>'),
+                }}
+              />
+            </div>
+          );
+        }
+
+        // Section Header or Bold Metadata Line
+        if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+          const headerText = trimmed.replace(/\*\*/g, '');
+          return (
+            <div key={`${keyPrefix}-${idx}`} className="text-[#00ff88] font-bold text-xs uppercase tracking-wide pt-1.5">
+              {headerText}
+            </div>
+          );
+        }
+
+        // Standard line with bold tags
+        return (
+          <div
+            key={`${keyPrefix}-${idx}`}
+            className="text-neutral-300 leading-snug"
+            dangerouslySetInnerHTML={{
+              __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>'),
+            }}
+          />
+        );
+      });
+    };
+
+    return (
+      <div className="space-y-2 text-xs font-sans">
+        {renderMarkdownLines(parts[0] || '', 'part-0')}
+
+        {Object.keys(codeMap).length > 0 && (
+          <MultiLangCodeBlock codeMap={codeMap} initialLang={initialCodeLang} />
+        )}
+
+        {parts.slice(1).map((part, pIdx) => (
+          <div key={`post-part-${pIdx}`}>
+            {renderMarkdownLines(part, `part-${pIdx + 1}`)}
+          </div>
+        ))}
       </div>
     );
   };
