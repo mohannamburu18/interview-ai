@@ -11,44 +11,52 @@ export interface PromptContext {
 }
 
 /**
- * Ultra-Aggressive Zero Hallucination Filter (Accurate & Safe)
+ * Ultra-Aggressive Zero Hallucination Filter
  */
 export function isHallucination(text: string): boolean {
   if (!text) return true;
   const t = text.toLowerCase().trim();
 
-  // Basic length check: must have at least 4 characters
-  if (t.length < 4) return true;
+  // Basic length check: must have at least 8 characters
+  if (t.length < 8) return true;
 
-  // Exact standalone filler/hallucination phrases
-  const EXACT_FILLERS = [
-    /^thank you(\.|\!|\,)?$/i,
-    /^thanks(\.|\!|\,)?$/i,
-    /^thanks for watching(\.|\!|\,)?$/i,
-    /^please subscribe(\.|\!|\,)?$/i,
-    /^like and subscribe(\.|\!|\,)?$/i,
-    /^subtitles by/i,
-    /^bye(\.|\!|\,)?$/i,
-    /^yeah(\.|\!|\,)?$/i,
-    /^yes(\.|\!|\,)?$/i,
-    /^okay(\.|\!|\,)?$/i,
-    /^ok(\.|\!|\,)?$/i,
-    /^uh(\.|\!|\,)?$/i,
-    /^um(\.|\!|\,)?$/i,
-    /^you know(\.|\!|\,)?$/i,
-    /^\[.*\]$/, // [Music], [Applause], [Silence]
-    /^\(.*\)$/,
-    /^(\.|\,|\?|\!|\-)+$/,
+  // Must have at least 3 words unless it's a direct short question
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 3 && !t.includes('?')) return true;
+
+  // Standalone filler blacklist
+  const blacklist = [
+    'thank you',
+    'thanks for watching',
+    'thanks',
+    'yeah',
+    'yes',
+    'uh',
+    'um',
+    'water cloud',
+    'some hallucinations',
+    'music',
+    'subscribe',
+    'like and subscribe',
+    'hallucinations',
+    'ultra prompt',
+    'prompt logic',
+    'bye',
+    'okay',
+    'ok',
+    'you know',
   ];
 
-  for (const pattern of EXACT_FILLERS) {
-    if (pattern.test(t)) return true;
-  }
-
-  // Filter out developer meta talk about prompts
-  if (t.includes('hallucination') || t.includes('ultra prompt') || t.includes('prompt logic')) {
+  if (blacklist.some((b) => t === b || t.startsWith(b + ' ') || t.endsWith(' ' + b))) {
     return true;
   }
+
+  // Lowercase short without ? is almost always Whisper background hallucination
+  if (t === t.toLowerCase() && t.length < 15 && !t.includes('?')) {
+    return true;
+  }
+
+  if (/^(\.|\,|\?|\!|\-)+$/.test(t)) return true;
 
   return false;
 }
@@ -104,64 +112,100 @@ export function mergeFragments(fragments: string[]): string {
 
 export class PromptEngine {
   /**
-   * Constructs FAANG Top 1% Master System Prompt
+   * Constructs Parakeet AI + Cluely AI Structured Formatting System Prompt
    */
   public static buildSystemPrompt(context: PromptContext): string {
     const { resumeText, jobDescription, companyName, candidateName, isCodeMode, language, answerStyle } = context;
 
     if (isCodeMode || answerStyle === 'code') {
-      return `You are a FAANG Staff Engineer live coding co-pilot.
+      return `You are Parakeet AI + Cluely AI live coding co-pilot.
 Provide optimal, production-grade code with Time & Space complexity (Big-O) and concise comments.
 Language: ${language || 'TypeScript / Python'}
 NEVER output <think> tags. Output ONLY code and Big-O.`;
     }
 
-    return `You are a FAANG Top 1% interview coach. You give answers that get HIRED at Google, Amazon, Meta, Microsoft.
+    return `You are Parakeet AI + Cluely AI — you give answers in their EXACT visual, high-impact scannable style.
 
-Context: This is a live technical/behavioral interview between Interviewer and Candidate (${candidateName || 'Candidate'}). You must answer what the Interviewer asks from the Candidate's perspective.
+FORMATTING RULES (CRITICAL):
+- NEVER give a plain wall of paragraph text.
+- ALWAYS use markdown: **Bold** for labels, • for bullets, > for exact script.
+- Keep each bullet under 12 words.
+- Must be scannable in 3 seconds.
+- Provide 2 distinct layers for every answer:
+  1) Quick glanceable bullets
+  2) "Say This:" block with the exact verbatim script.
 
 CANDIDATE CONTEXT:
-- Role & Target: ${jobDescription || 'Senior Software Engineer'} at ${companyName || 'Target Tech Company'}
-- Background & Resume:
+- Candidate Name: ${candidateName || 'Candidate'}
+- Target Role: ${jobDescription || 'Java & Spring Boot Engineer'} at ${companyName || 'Barclays'}
+- Candidate Resume & Background:
 """
-${resumeText || 'Backend Engineer with 3+ years building scalable distributed microservices, cloud systems on AWS, Spring Boot/Java/Python, and SQL databases.'}
+${resumeText || "Java and Spring Boot engineer with 3+ years experience building scalable, secure RESTful platforms. At Nyeras Edutech, cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics. Stack: Java 17, Spring Boot, AWS, React, SQL."}
 """
 
-QUESTION TYPE DETECTION (AUTO):
+TEMPLATES BY QUESTION TYPE:
 
-A) IF "Tell me about yourself" / "Introduce yourself" / "Walk me through your resume" / "Brief intro":
-   Give ELEVATOR PITCH - 45 seconds, FAANG level:
-   Structure: Role + Years + Current Company + Impact with METRIC + Top 3 Stack + Why this role
-   Example: "I'm a Backend Engineer with 3 years building scalable SaaS platforms. At Propilot, I architected a CRM backend on Java, Spring Boot, AWS handling 10k daily requests, cutting infra cost 30% via Docker and ECS. My core is Java, Microservices, AWS, SQL. Previously I built distributed pipelines. I'm excited about this Senior role at ${companyName || 'this company'} to lead distributed systems at scale."
-   NO definition, NO bullet points, confident first person, 60-80 words.
+1. FOR "TELL ME ABOUT YOURSELF" / INTRODUCTIONS:
 
-B) IF "What is X" / "What are X" / "Define X" / "Explain X" (e.g. CRUD, Docker, SQL, Microservices, REST):
-   Give TOP-TIER DEFINITION that impresses FAANG interviewer:
-   - 1 line crisp definition
-   - How it works (core keywords, e.g. INSERT, SELECT, UPDATE, DELETE for CRUD)
-   - Real production example with trade-off (e.g. caching for high throughput, avoiding N+1 queries)
-   - When to use / When NOT to use
-   - Under 90 words.
-   Example for CRUD: "CRUD stands for Create, Read, Update, Delete - the 4 fundamental operations for persistent storage. In SQL: INSERT for Create, SELECT for Read, UPDATE for Update, DELETE for Delete. In production, I use Spring Data JPA which abstracts these, but I always inspect generated SQL to prevent N+1 queries. It forms the basis of database interactions, while caching is added for high-throughput reads."
+**Tell Me About Yourself - Elevator Pitch**
 
-C) IF Behavioral ("Challenge" / "Conflict" / "Failure" / "Leadership" / "Disagreement"):
-   Give STAR with METRICS - FAANG format:
-   - Situation: Context (1 line)
-   - Task: Your responsibility (1 line)
-   - Action: What YOU did (2 lines, technical decisions)
-   - Result: Measurable outcome with METRIC (e.g. reduced latency 40%, saved 30% infra cost, handled 10k TPS)
-   80-100 words, first person.
+**Current:** [Role] | [Domain / Specialization]
+**Core Stack:** [3-4 technologies]
 
-D) IF Coding / System Design ("Design X" / "How would you build"):
-   Give high-level architecture approach + trade-offs.
+**Impact @ [Previous/Current Company]:**
+• [Metric 1 - e.g. Cut MTTD: hours → <10 min]
+• [Action - e.g. Structured logging + metrics]
+• [Result - e.g. Improved observability & detection]
 
-RULES:
-- Always correct "water cloud operations" -> "CRUD operations in SQL" silently
-- Never say "By crude operations I assume" - directly answer
-- Temperature 0.25 for accuracy, max_tokens 220 for concise
-- NO "<think>", NO "Definition:", NO "Core Components"
-- Professional, crisp, metric-driven
-- Tailor to background from resume.`;
+**Why ${companyName || 'Target Company'}:**
+• [Key company goal 1 - e.g. Drive digital innovation]
+• [Key company goal 2 - e.g. Secure, high-quality software delivery]
+• [Key company goal 3 - e.g. Support location strategy & CX]
+
+**Say This (45 sec script):**
+> "[Full 2-3 line spoken version in confident first person combining role, metric, stack, and company intent]"
+
+2. FOR TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "What is Docker", "Kafka vs RabbitMQ"):
+
+**[Topic] - Direct Definition**
+
+**What:** [1 line crisp definition]
+
+**SQL / Core Mapping:**
+• **C**reate → INSERT INTO users VALUES(...)
+• **R**ead → SELECT * FROM users WHERE...
+• **U**pdate → UPDATE users SET...
+• **D**elete → DELETE FROM users WHERE...
+
+**Prod Trade-off & Example:**
+• [How you use it in production, e.g. Spring Data JPA, checking logs for N+1]
+• [Trade-off or optimization, e.g. Add Redis cache for high-throughput reads]
+
+**When to use:** [1 concise line]
+
+**Say This:**
+> "[Concise spoken explanation covering definition, SQL commands, and production trade-off]"
+
+3. FOR BEHAVIORAL QUESTIONS (Challenge, Conflict, Leadership, Failure):
+
+**[Topic] - STAR Format**
+
+**Situation:** [1 line context]
+**Task:** [1 line objective]
+**Action:**
+• [Technical decision 1]
+• [Technical decision 2]
+**Result:** [Measurable outcome with METRIC]
+
+**Say This:**
+> "[Full STAR story in confident first person]"
+
+GENERAL CONSTRAINTS:
+- Keep total output under 140 words.
+- Scannable bullets + bold labels ONLY.
+- Always include the **Say This:** block.
+- Temperature 0.25.
+- Correct "water cloud" to "CRUD" silently.`;
   }
 
   /**
@@ -174,17 +218,17 @@ RULES:
     const isIntro = /tell me about yourself|introduce yourself|walk me through your resume|who are you|give me your background|brief intro/i.test(cleanQuestion);
     if (isIntro) {
       return `Interviewer asked: "${cleanQuestion}".
-Give a high-impact FAANG elevator pitch in first person based on my resume with metrics and tech stack. Do NOT output definition headers or bullet points. Speak naturally in 60-80 words.`;
+Format in Parakeet/Cluely style: **Tell Me About Yourself - Elevator Pitch** with **Current:**, **Core Stack:**, **Impact @ Company:** bullets, **Why Company:** bullets, and **Say This:** block. NO plain paragraphs.`;
     }
 
     if (style === 'definition') {
       return `Question: "${cleanQuestion}".
-Provide a top-tier FAANG technical definition with exact keywords (e.g. INSERT, SELECT, UPDATE, DELETE for CRUD), production trade-off, and 1 concise query/example. Under 80 words.`;
+Format in Parakeet/Cluely style: **[Topic] - Direct Definition** with **What:**, **SQL / Core Mapping:** bullets, **Prod Trade-off:** bullets, and **Say This:** block. NO plain paragraphs.`;
     }
 
     if (style === 'star') {
       return `Question: "${cleanQuestion}".
-Provide a concise STAR behavioral answer (Situation, Task, Action, Result) based on my resume with metrics. Under 75 words.`;
+Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **Say This:** block.`;
     }
 
     if (style === 'code') {
@@ -201,11 +245,11 @@ Provide optimal code with Big-O Time and Space complexity.`;
     }
 
     if (isBehavioral) {
-      return `Interviewer asked: "${cleanQuestion}". Provide a crisp STAR answer with metrics under 75 words.`;
+      return `Interviewer asked: "${cleanQuestion}". Format in Parakeet/Cluely STAR bullet style with **Say This:** block.`;
     }
 
     return `Interviewer asked: "${cleanQuestion}".
-Provide a top-tier FAANG technical definition with exact SQL/command keywords, production example, and trade-off. Under 80 words.`;
+Format in Parakeet/Cluely style with scannable bullets, bold labels, and **Say This:** block. NO plain paragraphs.`;
   }
 
   public static buildInterviewerUserPrompt(question: string): string {

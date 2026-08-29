@@ -176,7 +176,7 @@ export class DualAudioCaptureEngine {
 
             console.log('BLOB SIZE:', blob.size);
 
-            if (blob.size >= 2000 && this.groqApiKey) {
+            if (blob.size >= 4500 && this.groqApiKey) {
               try {
                 const text = await GroqService.transcribeAudio(
                   blob,
@@ -235,14 +235,14 @@ export class DualAudioCaptureEngine {
         micVol = micAvg / 255;
       }
 
-      // Detect speech activity
-      if (sysVol > 0.006 || micVol > 0.006) {
+      // Detect speech activity (Threshold = 8 / 255 ~ 0.008)
+      if (sysVol > 0.008 || micVol > 0.008) {
         this.hasSpeechInCurrentSlice = true;
 
         if (sysVol > micVol + 0.01) {
           this.currentSpeaker = 'interviewer';
           this.callbacks.onSpeechStart('interviewer');
-        } else if (micVol > 0.006) {
+        } else if (micVol > 0.008) {
           this.currentSpeaker = 'user';
           this.callbacks.onSpeechStart('user');
         }
