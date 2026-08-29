@@ -107,12 +107,9 @@ export class GroqService {
     formData.append('response_format', 'json');
     formData.append('temperature', '0');
 
-    const techVocabulary = 'Technical interview terms: TrustSec, Cisco TrustSec, CRUD, SQL, Spring Boot, Java, Python, prime number, doubly linked list, microservices, AWS, Docker, Kubernetes, Barclays, Nyeras Edutech';
-    const combinedPrompt = contextPrompt && contextPrompt.trim()
-      ? `${contextPrompt.slice(-80)}, ${techVocabulary}`
-      : techVocabulary;
-
-    formData.append('prompt', combinedPrompt);
+    if (contextPrompt && contextPrompt.trim() && contextPrompt.length > 10) {
+      formData.append('prompt', contextPrompt.slice(-100));
+    }
 
     if (language && language !== 'auto') {
       formData.append('language', language.split('-')[0]);

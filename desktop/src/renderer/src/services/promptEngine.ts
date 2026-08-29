@@ -72,6 +72,11 @@ const BLACKLIST_CONTAINS = [
   'crypto',
   'blockchain',
   'in-app',
+  'cift-rank',
+  'cift',
+  'interfaces',
+  'tustservice',
+  'ciso',
 ];
 
 /**
@@ -97,21 +102,34 @@ export function isHallucination(text: string): boolean {
   // Rule 4: Contains website URLs, promo phrases, or buzzword hallucinations
   if (BLACKLIST_CONTAINS.some((p) => t.includes(p))) return true;
 
-  // Rule 5: Filler only regex
+  // Rule 5: Website link patterns (www, .com, .org, .net, http, https, cisco.com)
+  if (/(https?:\/\/|www\.|\.com|\.org|\.net|\.io|\.co\b|cisco\.com)/i.test(t)) {
+    return true;
+  }
+
+  // Rule 6: YouTube spam & phantom title hallucinations (e.g. "How to Set Your CIFT-Rank Interfaces")
+  if (/\b(cift-rank|cift|interfaces|tustservice|web3|web2|ciso\b.*ciso|ciso\b.*trustsec|trustsec\b.*ciso|subtitles|closed captions)\b/i.test(t)) {
+    return true;
+  }
+
+  // Rule 7: Comma-separated lists of buzzwords / prompt echoes (e.g. "TrustSec, CISO, TrustSec, CRUD")
+  const commaCount = (t.match(/,/g) || []).length;
+  if (commaCount >= 2 && words.length <= 8 && !t.includes('?') && !/^(what|how|why|explain|describe|tell|can you)/i.test(t)) {
+    return true;
+  }
+
+  // Rule 8: Filler only regex
   if (/^(yeah|yes|no|okay|ok|thanks|thank you|uh|um|ah|oh|hmm|got it|sure|right|hello|hi|bye)[\s\.\,\!\?]*$/i.test(t)) {
     return true;
   }
 
-  // Rule 6: Buzzword list check (comma-separated list of words like "In-App, Web, Web3, Web2")
-  const commaCount = (t.match(/,/g) || []).length;
-  if (commaCount >= 2 && words.length <= 6) return true;
-
-  // Rule 7: Repetition loop check (Whisper repeating words)
-  const uniqueWords = new Set(words);
+  // Rule 9: Repetition loop check (Whisper repeating same words)
+  const uniqueWords = new Set(words.map((w) => w.replace(/[^a-z0-9]/gi, '')));
   if (uniqueWords.size === 1 && words.length > 2) return true; // e.g. "hello hello hello"
-  if (uniqueWords.size <= 2 && words.length > 4) return true;
+  if (uniqueWords.size <= 2 && words.length >= 4) return true; // e.g. "trustsec crud trustsec crud"
+  if (uniqueWords.size <= 3 && words.length >= 6) return true;
 
-  // Rule 8: Non-text punctuation / whitespace only
+  // Rule 10: Non-text punctuation / whitespace only
   if (/^[\.\,\s\-\_\?\!\:\;\/\\\|\@\#\$\%\^\&\*\(\)\+]+$/.test(t)) return true;
 
   return false;
@@ -137,7 +155,13 @@ export function correctTechTerms(text: string): string {
 
   // Cisco TrustSec mishears
   t = t.replace(/trust\s*sick\s*s-?i-?c-?k/gi, 'Cisco TrustSec');
+  t = t.replace(/tustservice/gi, 'TrustSec');
+  t = t.replace(/tustsec/gi, 'TrustSec');
   t = t.replace(/trust\s*sick/gi, 'TrustSec');
+  t = t.replace(/trust\s*six/gi, 'TrustSec');
+  t = t.replace(/\bS-I-C-K\b/gi, 'TrustSec');
+  t = t.replace(/cisco\s*trust\s*sec/gi, 'Cisco TrustSec');
+  t = t.replace(/trustsec/gi, 'TrustSec');
   t = t.replace(/trust\s*six/gi, 'TrustSec');
   t = t.replace(/tustsec/gi, 'TrustSec');
   t = t.replace(/trustsec/gi, 'TrustSec');

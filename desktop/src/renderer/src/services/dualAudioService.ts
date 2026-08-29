@@ -32,9 +32,9 @@ export class DualAudioEngine {
   private recentTranscriptContext: string = '';
 
   // Energy and duration thresholds for Layer 1 & Layer 2
-  private readonly LOUDNESS_THRESHOLD = 0.016; // 16/255: Filters fan noise & room background
-  private readonly MIN_SPEECH_DURATION_MS = 1200; // 1.2s: Filters keyboard clicks, mouse taps, coughs
-  private readonly MIN_BLOB_SIZE = 7000; // 7KB minimum audio blob size
+  private readonly LOUDNESS_THRESHOLD = 0.022; // 22/255: Filters fan noise & room background
+  private readonly MIN_SPEECH_DURATION_MS = 1400; // 1.4s: Filters keyboard clicks, mouse taps, coughs
+  private readonly MIN_BLOB_SIZE = 8000; // 8KB minimum audio blob size
 
   constructor(callbacks: AudioCaptureCallbacks, groqApiKey?: string, language?: string) {
     this.callbacks = callbacks;
