@@ -24,9 +24,6 @@ export class DualAudioCaptureEngine {
   private micAnalyser: AnalyserNode | null = null;
   private animationFrameId: number | null = null;
 
-  // Web Speech API for Realtime Instant Interim (<300ms)
-  private speechRecognition: any = null;
-
   // VAD & Silence tracking
   private isSpeaking: boolean = false;
   private isFinalizing: boolean = false;
@@ -143,58 +140,9 @@ export class DualAudioCaptureEngine {
     if (finalStream) {
       this.initParakeetRecorder(finalStream);
       this.startVadDetection();
-      this.startRealtimeWebSpeech();
     }
 
     return { systemCaptured, micCaptured };
-  }
-
-  /**
-   * Realtime Web Speech Recognition for instant interim streaming (<300ms)
-   */
-  private startRealtimeWebSpeech() {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    try {
-      this.speechRecognition = new SpeechRecognition();
-      this.speechRecognition.continuous = true;
-      this.speechRecognition.interimResults = true;
-      this.speechRecognition.lang = this.language && this.language !== 'auto' ? this.language : 'en-US';
-
-      this.speechRecognition.onresult = (event: any) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            // Final from WebSpeech handled by Groq for higher accuracy
-          } else {
-            interim += transcript;
-          }
-        }
-
-        if (interim.trim() && !isHallucination(interim)) {
-          const corrected = correctTerms(interim.trim());
-          this.callbacks.onTranscript(corrected, this.currentSpeaker, false);
-        }
-      };
-
-      this.speechRecognition.onerror = (e: any) => {
-        // Ignore expected speech recognition interruptions
-      };
-
-      this.speechRecognition.onend = () => {
-        if (this.isRunning) {
-          try {
-            this.speechRecognition?.start();
-          } catch (e) {}
-        }
-      };
-
-      this.speechRecognition.start();
-    } catch (err) {
-      console.warn('[WebSpeech API] Not available or blocked:', err);
-    }
   }
 
   /**
@@ -219,7 +167,7 @@ export class DualAudioCaptureEngine {
       this.audioChunks = [];
       this.isFinalizing = false;
 
-      if (blob.size >= 3500 && this.groqApiKey) {
+      if (blob.size >= 2500 && this.groqApiKey) {
         try {
           const contextPrompt = this.recentTranscriptContext
             ? `Previous context: ${this.recentTranscriptContext}`
@@ -353,12 +301,6 @@ export class DualAudioCaptureEngine {
 
   public stop(): void {
     this.isRunning = false;
-    if (this.speechRecognition) {
-      try {
-        this.speechRecognition.stop();
-      } catch (e) {}
-      this.speechRecognition = null;
-    }
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
