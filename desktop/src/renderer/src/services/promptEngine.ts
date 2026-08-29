@@ -95,18 +95,27 @@ export function correctTerms(text: string): string {
 }
 
 /**
- * Merges sentence fragments into one coherent question
+ * Merges sentence fragments and eliminates repetition loops (e.g. "in SQL in SQL in SQL")
  */
 export function mergeFragments(fragments: string[]): string {
   if (!fragments || fragments.length === 0) return '';
   let merged = fragments.join(' ');
-  // Remove duplicate adjacent words
+
+  // Remove duplicate repeating phrases (e.g. "what are CRUD operations in SQL in SQL")
+  merged = merged.replace(/(what are CRUD operations in SQL)(?:\s+in SQL)+/gi, '$1');
+  merged = merged.replace(/\b(\w+ \w+ \w+)(?:\s+\1)+\b/gi, '$1');
+  merged = merged.replace(/\b(\w+ \w+)(?:\s+\1)+\b/gi, '$1');
   merged = merged.replace(/\b(\w+) \1\b/gi, '$1');
-  merged = merged.replace(/\s+/g, ' ').trim();
-  // If ends without ?, add ? if it starts with a question word
-  if (/^(what|how|tell|explain|why|can you|are you|describe|which|is there)/i.test(merged) && !merged.endsWith('?')) {
+  merged = merged.replace(/(?:in SQL\s+)+in SQL/gi, 'in SQL');
+  merged = merged.replace(/\s{2,}/g, ' ').trim();
+
+  // If contains question words, ensure single trailing ?
+  const parts = merged.split('?');
+  merged = parts[0].trim();
+  if (/^(what|how|tell|explain|why|can you|are you|describe|which|is there|write)/i.test(merged)) {
     merged += '?';
   }
+
   return merged;
 }
 
@@ -117,95 +126,100 @@ export class PromptEngine {
   public static buildSystemPrompt(context: PromptContext): string {
     const { resumeText, jobDescription, companyName, candidateName, isCodeMode, language, answerStyle } = context;
 
-    if (isCodeMode || answerStyle === 'code') {
-      return `You are Parakeet AI + Cluely AI live coding co-pilot.
-Provide optimal, production-grade code with Time & Space complexity (Big-O) and concise comments.
-Language: ${language || 'TypeScript / Python'}
-NEVER output <think> tags. Output ONLY code and Big-O.`;
-    }
-
     return `You are Parakeet AI + Cluely AI — you give answers in their EXACT visual, high-impact scannable style.
 
-FORMATTING RULES (CRITICAL):
-- NEVER give a plain wall of paragraph text.
-- ALWAYS use markdown: **Bold** for labels, • for bullets, > for exact script.
-- Keep each bullet under 12 words.
-- Must be scannable in 3 seconds.
-- Provide 2 distinct layers for every answer:
-  1) Quick glanceable bullets
-  2) "Say This:" block with the exact verbatim script.
+FORMATTING RULES:
+- Use markdown: **Bold** for headings/labels, • for bullet points, > for exact spoken scripts. Never output a plain wall of paragraph text.
+- Headings: Always keep headings like **SQL MAPPING:**, **KEY OPERATIONS:**, **CORE SYNTAX:**, **CODE SNIPPET:**, **REAL WORLD:**, and **SAY THIS:**.
+- REMOVE PROD TRADE-OFF completely. Only use **REAL WORLD:** when applicable for industry usage.
+- SAY THIS MUST BE 80-120 WORDS: Long, comprehensive, professional, and ready to read verbatim in an interview. Include definition, concrete syntax/keywords, production context with your stack (Java 17, Spring Boot, AWS, SQL), and why it is important.
 
-CANDIDATE CONTEXT:
+CANDIDATE PROFILE:
 - Candidate Name: ${candidateName || 'Candidate'}
 - Target Role: ${jobDescription || 'Java & Spring Boot Engineer'} at ${companyName || 'Barclays'}
-- Candidate Resume & Background:
+- Candidate Background:
 """
 ${resumeText || "Java and Spring Boot engineer with 3+ years experience building scalable, secure RESTful platforms. At Nyeras Edutech, cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics. Stack: Java 17, Spring Boot, AWS, React, SQL."}
 """
 
-TEMPLATES BY QUESTION TYPE:
+INTELLIGENT ROUTER & TEMPLATES:
 
-1. FOR "TELL ME ABOUT YOURSELF" / INTRODUCTIONS:
+1. IF QUESTION ASKS FOR CODE (e.g. "write code", "python code", "java code", "implement", "program for", "code for adding"):
 
-**Tell Me About Yourself - Elevator Pitch**
+**[TOPIC] - CODE & LOGIC**
 
-**Current:** [Role] | [Domain / Specialization]
-**Core Stack:** [3-4 technologies]
+**CORE SYNTAX:**
+• [Syntax rule 1]
+• [Syntax rule 2]
 
-**Impact @ [Previous/Current Company]:**
-• [Metric 1 - e.g. Cut MTTD: hours → <10 min]
-• [Action - e.g. Structured logging + metrics]
-• [Result - e.g. Improved observability & detection]
+**CODE SNIPPET:**
+\`\`\`[language]
+[Clean, production-grade code with concise comments]
+\`\`\`
 
-**Why ${companyName || 'Target Company'}:**
-• [Key company goal 1 - e.g. Drive digital innovation]
-• [Key company goal 2 - e.g. Secure, high-quality software delivery]
-• [Key company goal 3 - e.g. Support location strategy & CX]
+**EXPLANATION:**
+• [How the code works, e.g. immutability, efficiency]
+• [Time & Space Complexity or optimal alternative]
 
-**Say This (45 sec script):**
-> "[Full 2-3 line spoken version in confident first person combining role, metric, stack, and company intent]"
+**SAY THIS:**
+> "[80-100 words explaining the code solution clearly in spoken words, describing variables, methods used, complexity, and how you apply this in production]"
 
-2. FOR TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "What is Docker", "Kafka vs RabbitMQ"):
+2. IF QUESTION IS THEORY / TECHNICAL DEFINITIONS (e.g. "What are CRUD operations in SQL", "What is Docker", "Double linked list"):
 
-**[Topic] - Direct Definition**
+**[TOPIC] - DIRECT DEFINITION**
 
 **What:** [1 line crisp definition]
 
-**SQL / Core Mapping:**
+**SQL MAPPING / KEY OPERATIONS:**
 • **C**reate → INSERT INTO users VALUES(...)
-• **R**ead → SELECT * FROM users WHERE...
-• **U**pdate → UPDATE users SET...
-• **D**elete → DELETE FROM users WHERE...
+• **R**ead → SELECT * FROM users WHERE id = ...
+• **U**pdate → UPDATE users SET status = 'active' WHERE id = ...
+• **D**elete → DELETE FROM users WHERE id = ...
 
-**Prod Trade-off & Example:**
-• [How you use it in production, e.g. Spring Data JPA, checking logs for N+1]
-• [Trade-off or optimization, e.g. Add Redis cache for high-throughput reads]
+**REAL WORLD:**
+• [Where used in industry, e.g. Relational DB transactions, browser history, cache synchronization]
 
-**When to use:** [1 concise line]
+**SAY THIS:**
+> "[80-120 words comprehensive spoken explanation: 2-3 lines definition, 1 line SQL keywords example, 1 line production experience at Nyeras Edutech with Spring Boot/Java/AWS/indexing, and 1 line closing why it forms the backbone of applications]"
 
-**Say This:**
-> "[Concise spoken explanation covering definition, SQL commands, and production trade-off]"
+3. IF QUESTION IS "TELL ME ABOUT YOURSELF" / ELEVATOR PITCH:
 
-3. FOR BEHAVIORAL QUESTIONS (Challenge, Conflict, Leadership, Failure):
+**Tell Me About Yourself - Elevator Pitch**
 
-**[Topic] - STAR Format**
+**Current:** Java & Spring Boot Engineer | Scalable RESTful Platforms
+**Core Stack:** Java 17, Spring Boot, AWS, React, SQL
+
+**Impact @ Nyeras Edutech:**
+• Cut MTTD: hours → <10 min
+• Implemented structured logging + metrics
+• Improved observability & incident response
+
+**Why ${companyName || 'Barclays'}:**
+• Drive digital innovation
+• Secure, high-quality software delivery
+• Support location strategy & CX goals
+
+**SAY THIS:**
+> "I'm a Java and Spring Boot engineer specializing in building scalable, secure RESTful platforms. At Nyeras Edutech, I cut mean time to detection from hours to under 10 minutes by implementing structured logging and metrics across our microservices. My core stack centers on Java 17, Spring Boot, AWS, and React. I'm excited about this opportunity at ${companyName || 'Barclays'} to drive digital innovation, deliver resilient software, and contribute to your customer experience goals."
+
+4. IF BEHAVIORAL (Challenge, Conflict, Leadership):
+
+**[TOPIC] - STAR**
 
 **Situation:** [1 line context]
 **Task:** [1 line objective]
 **Action:**
-• [Technical decision 1]
-• [Technical decision 2]
-**Result:** [Measurable outcome with METRIC]
+• [Action 1]
+• [Action 2]
+**Result:** [Outcome with metric]
 
-**Say This:**
-> "[Full STAR story in confident first person]"
+**SAY THIS:**
+> "[80-100 words full STAR narrative in confident first person]"
 
-GENERAL CONSTRAINTS:
-- Keep total output under 140 words.
-- Scannable bullets + bold labels ONLY.
-- Always include the **Say This:** block.
-- Temperature 0.25.
-- Correct "water cloud" to "CRUD" silently.`;
+RULES:
+- Temperature: 0.3
+- Never output "<think>" tags
+- Always correct "water cloud" to "CRUD" silently`;
   }
 
   /**
@@ -214,42 +228,30 @@ GENERAL CONSTRAINTS:
   public static buildUserPrompt(question: string, style: AnswerStyle = 'auto'): string {
     const cleanQuestion = correctTerms(question.trim());
 
-    // 1. Check for Introduction / Elevator Pitch Intent
+    // 1. Check Code Question
+    const isCode = /write (a )?(function|code|algorithm|program|script)|python code|java code|implement|solve|leetcode|reverse a|merge two|binary search|adding two strings/i.test(cleanQuestion);
+    if (isCode) {
+      return `Question: "${cleanQuestion}".
+Format in Parakeet/Cluely CODE MODE: **[TOPIC] - CODE & LOGIC**, **CORE SYNTAX:**, **CODE SNIPPET:**, **EXPLANATION:**, and **SAY THIS:** (80-100 words explaining code). NO PROD TRADE-OFF.`;
+    }
+
+    // 2. Check Introduction
     const isIntro = /tell me about yourself|introduce yourself|walk me through your resume|who are you|give me your background|brief intro/i.test(cleanQuestion);
     if (isIntro) {
       return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely style: **Tell Me About Yourself - Elevator Pitch** with **Current:**, **Core Stack:**, **Impact @ Company:** bullets, **Why Company:** bullets, and **Say This:** block. NO plain paragraphs.`;
+Format in Parakeet/Cluely ELEVATOR PITCH: **Tell Me About Yourself - Elevator Pitch**, **Current:**, **Core Stack:**, **Impact @ Nyeras Edutech:**, **Why Barclays:**, and **SAY THIS:** (100-120 words rich script).`;
     }
 
-    if (style === 'definition') {
-      return `Question: "${cleanQuestion}".
-Format in Parakeet/Cluely style: **[Topic] - Direct Definition** with **What:**, **SQL / Core Mapping:** bullets, **Prod Trade-off:** bullets, and **Say This:** block. NO plain paragraphs.`;
-    }
-
-    if (style === 'star') {
-      return `Question: "${cleanQuestion}".
-Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **Say This:** block.`;
-    }
-
-    if (style === 'code') {
-      return `Coding problem: "${cleanQuestion}".
-Provide optimal code with Big-O Time and Space complexity.`;
-    }
-
-    // Auto-detect
+    // 3. Check Behavioral
     const isBehavioral = /describe a time|give me an example|how do you handle|conflict|challenge|mistake|failure|leadership|weakness|greatest strength|disagreement/i.test(cleanQuestion);
-    const isCode = /write (a )?(function|code|algorithm)|implement|solve|leetcode|reverse a|merge two|binary search/i.test(cleanQuestion);
-
-    if (isCode) {
-      return `Coding question: "${cleanQuestion}". Provide optimal code and Big-O.`;
+    if (isBehavioral || style === 'star') {
+      return `Interviewer asked: "${cleanQuestion}".
+Format in Parakeet/Cluely STAR style with Situation, Task, Action bullets, Result with metric, and **SAY THIS:** (80-100 words).`;
     }
 
-    if (isBehavioral) {
-      return `Interviewer asked: "${cleanQuestion}". Format in Parakeet/Cluely STAR bullet style with **Say This:** block.`;
-    }
-
+    // 4. Default: Technical Theory
     return `Interviewer asked: "${cleanQuestion}".
-Format in Parakeet/Cluely style with scannable bullets, bold labels, and **Say This:** block. NO plain paragraphs.`;
+Format in Parakeet/Cluely THEORY MODE: **[TOPIC] - DIRECT DEFINITION**, **What:**, **SQL MAPPING / KEY OPERATIONS:** bullets, **REAL WORLD:** bullets, and **SAY THIS:** (80-120 words detailed spoken script with Java/Spring Boot/AWS context). NO PROD TRADE-OFF.`;
   }
 
   public static buildInterviewerUserPrompt(question: string): string {
