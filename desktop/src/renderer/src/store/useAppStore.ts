@@ -62,11 +62,41 @@ interface AppStore {
   deleteSessionItem: (id: string) => void;
 }
 
-const metaEnv = (import.meta as any).env || {};
+export function getInitialGroqKey(): string {
+  try {
+    const rawLocal = localStorage.getItem('groq_api_key') || localStorage.getItem('GROQ_API_KEY') || localStorage.getItem('vite_groq_key');
+    if (rawLocal && rawLocal.trim()) return rawLocal.trim();
+
+    const configStr = localStorage.getItem('parakeet_config');
+    if (configStr) {
+      const parsed = JSON.parse(configStr);
+      if (parsed.groqApiKey && parsed.groqApiKey.trim()) return parsed.groqApiKey.trim();
+    }
+  } catch (e) {}
+
+  const metaEnv = (import.meta as any).env || {};
+  return metaEnv.VITE_GROQ_API_KEY || metaEnv.GROQ_API_KEY || '';
+}
+
+export function getInitialGeminiKey(): string {
+  try {
+    const rawLocal = localStorage.getItem('gemini_api_key') || localStorage.getItem('GEMINI_API_KEY') || localStorage.getItem('vite_gemini_key');
+    if (rawLocal && rawLocal.trim()) return rawLocal.trim();
+
+    const configStr = localStorage.getItem('parakeet_config');
+    if (configStr) {
+      const parsed = JSON.parse(configStr);
+      if (parsed.geminiApiKey && parsed.geminiApiKey.trim()) return parsed.geminiApiKey.trim();
+    }
+  } catch (e) {}
+
+  const metaEnv = (import.meta as any).env || {};
+  return metaEnv.VITE_GEMINI_API_KEY || metaEnv.GEMINI_API_KEY || '';
+}
 
 const DEFAULT_CONFIG: UserConfig = {
-  groqApiKey: metaEnv.VITE_GROQ_API_KEY || '',
-  geminiApiKey: metaEnv.VITE_GEMINI_API_KEY || '',
+  groqApiKey: getInitialGroqKey(),
+  geminiApiKey: getInitialGeminiKey(),
   resumeText: '',
   jobDescription: '',
   companyName: '',
@@ -307,11 +337,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       let succeeded = false;
 
+      const activeGroqKey = config.groqApiKey || getInitialGroqKey();
+      const activeGeminiKey = config.geminiApiKey || getInitialGeminiKey();
+
       // 1. Try Groq (Ultra-fast LLaMA 3.1 8B Instant)
-      if (config.groqApiKey) {
+      if (activeGroqKey) {
         try {
           const modelName = 'llama-3.1-8b-instant';
-          await GroqService.streamChat(config.groqApiKey, modelName, systemPrompt, userPrompt, onChunk);
+          await GroqService.streamChat(activeGroqKey, modelName, systemPrompt, userPrompt, onChunk);
           succeeded = true;
         } catch (groqErr) {
           console.warn('[AppStore] Groq attempt failed:', groqErr);
@@ -319,9 +352,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
 
       // 2. Try Gemini fallback only if Groq failed AND key is in valid format
-      if (!succeeded && config.geminiApiKey && GeminiService.isValidGeminiKey(config.geminiApiKey)) {
+      if (!succeeded && activeGeminiKey && GeminiService.isValidGeminiKey(activeGeminiKey)) {
         try {
-          await GeminiService.streamChat(config.geminiApiKey, systemPrompt, userPrompt, onChunk);
+          await GeminiService.streamChat(activeGeminiKey, systemPrompt, userPrompt, onChunk);
           succeeded = true;
         } catch (geminiErr) {
           console.warn('[AppStore] Gemini attempt failed:', geminiErr);
@@ -329,10 +362,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
 
       if (!succeeded) {
-        set({
-          currentAnswer: '⚠️ Please configure your free Groq or Gemini API key in Settings to receive real-time answers.',
-          overlayState: 'idle',
-        });
+        console.warn('[AppStore] No active API key found or requests failed.');
+        set({ overlayState: 'idle' });
         return;
       }
 

@@ -52,6 +52,10 @@ export const SettingsModal: React.FC = () => {
   if (!isSettingsOpen) return null;
 
   const handleSave = () => {
+    localStorage.setItem('groq_api_key', groqKey.trim());
+    localStorage.setItem('gemini_api_key', geminiKey.trim());
+    localStorage.setItem('hide_api_warning', 'true');
+
     updateConfig({
       groqApiKey: groqKey.trim(),
       geminiApiKey: geminiKey.trim(),
